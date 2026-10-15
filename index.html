@@ -2,326 +2,473 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="theme-color" content="#082746">
-    <title>ARMCO Montagem LC25</title>
-    <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#111111">
+  <title>ARMCO MONTAGEM LC25</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="script.js" defer></script>
 </head>
-<body>
+<body class="dark">
 
-<div class="layout" id="layout">
-
-    <div class="fundo-menu" id="fundoMenu" onclick="fecharMenu()"></div>
-
-    <aside class="sidebar" id="sidebar">
-        <div class="marca">
-            <div class="marca-simbolo">A</div>
-            <div>
-                <strong>ARMCO</strong>
-                <span>MONTAGEM</span>
-            </div>
-            <button class="fechar-menu" onclick="fecharMenu()" aria-label="Fechar menu">×</button>
-        </div>
-
-        <nav class="navegacao">
-            <button class="nav-item ativo" data-pagina="inicio" onclick="irPara('inicio')">
-                <span class="nav-icone">⌂</span><span>Início</span>
-            </button>
-            <button class="nav-item" data-pagina="historico" onclick="irPara('historico')">
-                <span class="nav-icone">◷</span><span>Histórico de Montagens</span>
-            </button>
-            <button class="nav-item" data-pagina="pecas" onclick="irPara('pecas')">
-                <span class="nav-icone">▤</span><span>Cadastro de Peças</span>
-            </button>
-            <button class="nav-item" data-pagina="manual" onclick="irPara('manual')">
-                <span class="nav-icone">▣</span><span>Manual de Montagem</span>
-            </button>
-
-            <div class="nav-separador"></div>
-
-            <button class="nav-item" data-pagina="configuracoes" onclick="irPara('configuracoes')">
-                <span class="nav-icone">⚙</span><span>Configurações</span>
-            </button>
-        </nav>
-
-        <div class="sidebar-rodape">
-            <strong>ARMCO MONTAGEM</strong>
-            <span>Sistema auxiliar · v1.0</span>
-        </div>
-    </aside>
-
-    <div class="conteudo">
-        <header class="barra-topo">
-            <button class="botao-menu" onclick="alternarMenu()" aria-label="Abrir menu">☰</button>
-            <div class="topo-titulo">ARMCO <span>MONTAGEM</span></div>
-            <div class="topo-status"><span class="ponto-status"></span> Sistema auxiliar</div>
-        </header>
-
-        <main class="principal">
-
-            <!-- INÍCIO -->
-            <section class="pagina ativa" id="pagina-inicio">
-                <div class="banner">
-                    <div class="banner-texto">
-                        <span class="sobretitulo">BEM-VINDO AO</span>
-                        <h1>ARMCO MONTAGEM LC25</h1>
-                        <p>Registre suas montagens, consulte o histórico e organize as peças em um só lugar.</p>
-                    </div>
-                    <div class="banner-detalhe">QUALIDADE<br>ORGANIZAÇÃO<br>PRODUTIVIDADE</div>
-                </div>
-
-                <div class="atalhos">
-                    <button class="atalho destaque" onclick="focarFormulario()">
-                        <span class="atalho-icone">＋</span>
-                        <strong>Nova Montagem</strong>
-                        <span>Registrar uma montagem</span>
-                    </button>
-                    <button class="atalho" onclick="irPara('historico')">
-                        <span class="atalho-icone">◷</span>
-                        <strong>Histórico</strong>
-                        <span>Consultar registros anteriores</span>
-                    </button>
-                    <button class="atalho" onclick="irPara('pecas')">
-                        <span class="atalho-icone">▤</span>
-                        <strong>Cadastro de Peças</strong>
-                        <span>Gerenciar anéis, impulsores e facas</span>
-                    </button>
-                    <button class="atalho" onclick="irPara('manual')">
-                        <span class="atalho-icone">▣</span>
-                        <strong>Manual de Montagem</strong>
-                        <span>Consultar instruções de trabalho</span>
-                    </button>
-                </div>
-
-                <div class="grade-inicio">
-                    <section class="painel" id="formularioMontagem">
-                        <div class="painel-cabecalho">
-                            <div>
-                                <h2>＋ Nova Montagem</h2>
-                                <p>Preencha os dados do pedido para registrar.</p>
-                            </div>
-                        </div>
-
-                        <form id="formMontagem">
-                            <div class="campo">
-                                <label for="cliente">Cliente / etapa</label>
-                                <input id="cliente" name="cliente" required maxlength="100"
-                                    placeholder="Ex.: Cliente X ou Etapa 01">
-                            </div>
-
-                            <div class="linha-campos">
-                                <div class="campo">
-                                    <label for="largura">Largura solicitada (cm)</label>
-                                    <input id="largura" name="largura" required inputmode="decimal"
-                                        placeholder="Ex.: 10,00">
-                                </div>
-                                <div class="campo">
-                                    <label for="espessura">Espessura</label>
-                                    <input id="espessura" name="espessura" required inputmode="decimal"
-                                        placeholder="Informe a medida">
-                                </div>
-                            </div>
-
-                            <div class="campo">
-                                <label for="tipoPedido">Tipo de pedido</label>
-                                <select id="tipoPedido" name="tipoPedido">
-                                    <option value="Cliente final">Cliente final</option>
-                                    <option value="Etapa intermediária">Etapa intermediária</option>
-                                </select>
-                            </div>
-                           
-                                <fieldset class="campo campo-facas">
-                                    <legend>Quantidade de facas</legend>
-                                    <div class="opcoes-radio">
-                                        <label>
-                                            <input type="radio" name="quantidadeFacas" value="1" checked>
-                                            1 faca
-                                        </label>
-                                        <label>
-                                            <input type="radio" name="quantidadeFacas" value="2">
-                                            2 facas (superior e inferior)
-                                        </label>
-                                    </div>
-                                </fieldset>
-
-                            <div class="linha-campos">
-                                <div class="campo">
-                                    <label for="facaSuperior">Faca superior / faca utilizada</label>
-                                    <input id="facaSuperior" name="facaSuperior" required
-                                        placeholder="Identificação da faca">
-                                </div>
-                                <div class="campo" id="campoFacaInferior" hidden>
-                                    <label for="facaInferior">Faca inferior</label>
-                                    <input id="facaInferior" name="facaInferior"
-                                        placeholder="Identificação da segunda faca">
-                                </div>
-                            </div>
-
-                            <div class="campo">
-                                <label for="observacoes">Observações (opcional)</label>
-                                <textarea id="observacoes" name="observacoes" rows="2"
-                                    placeholder="Informações adicionais da montagem"></textarea>
-                            </div>
-
-                            <button class="botao-principal" type="submit">▣ Salvar Montagem</button>
-                            <p class="mensagem" id="mensagemMontagem" role="status"></p>
-                        </form>
-                    </section>
-
-                    <section class="painel">
-                        <div class="painel-cabecalho">
-                            <div>
-                                <h2>Últimas Montagens</h2>
-                                <p>Registros salvos neste dispositivo.</p>
-                            </div>
-                            <button class="link-botao" onclick="irPara('historico')">Ver todas →</button>
-                        </div>
-                        <div id="ultimasMontagens" class="lista-registros">
-                            <p class="vazio">Nenhuma montagem registrada ainda.</p>
-                        </div>
-                    </section>
-                </div>
-            </section>
-
-            <!-- HISTÓRICO -->
-            <section class="pagina" id="pagina-historico">
-                <div class="cabecalho-pagina">
-                    <span class="sobretitulo">REGISTROS</span>
-                    <h1>Histórico de Montagens</h1>
-                    <p>Pesquise as montagens registradas neste dispositivo.</p>
-                </div>
-
-                <section class="painel">
-                    <div class="campo">
-                        <label for="buscaHistorico">Pesquisar</label>
-                        <input id="buscaHistorico" placeholder="Cliente, etapa, largura ou espessura">
-                    </div>
-                    <div id="listaHistorico" class="lista-registros">
-                        <p class="vazio">Nenhuma montagem registrada ainda.</p>
-                    </div>
-                </section>
-            </section>
-
-            <!-- CADASTRO DE PEÇAS -->
-            <section class="pagina" id="pagina-pecas">
-                <div class="cabecalho-pagina">
-                    <span class="sobretitulo">BANCO DE PEÇAS</span>
-                    <h1>Cadastro de Peças</h1>
-                    <p>Registre e consulte as medidas confirmadas dos componentes.</p>
-                </div>
-
-                <div class="cartoes-pecas">
-                    <button class="cartao-peca selecionado" onclick="selecionarPeca('ANEL', this)">
-                        <span class="peca-icone">◉</span><strong>Anéis</strong><span>Larguras dos anéis</span>
-                    </button>
-                    <button class="cartao-peca" onclick="selecionarPeca('IMPULSOR', this)">
-                        <span class="peca-icone">✿</span><strong>Impulsores</strong><span>Larguras dos impulsores</span>
-                    </button>
-                    <button class="cartao-peca" onclick="selecionarPeca('FACA', this)">
-                        <span class="peca-icone">▰</span><strong>Facas</strong><span>Medidas das facas</span>
-                    </button>
-                </div>
-
-                <section class="painel">
-                    <h2 id="tituloPeca">Cadastro de Anéis</h2>
-                    <p>Informe uma identificação e a medida em centímetros.</p>
-
-                    <form id="formPeca">
-                        <input type="hidden" id="tipoPeca" value="ANEL">
-                        <div class="linha-campos">
-                            <div class="campo">
-                                <label for="nomePeca">Identificação da peça</label>
-                                <input id="nomePeca" required maxlength="80"
-                                    placeholder="Ex.: Anel 01">
-                            </div>
-                            <div class="campo">
-                                <label for="medidaPeca">Medida (cm)</label>
-                                <input id="medidaPeca" required inputmode="decimal"
-                                    placeholder="Ex.: 6,90">
-                            </div>
-                        </div>
-                        <button class="botao-principal" type="submit">＋ Cadastrar Peça</button>
-                        <p class="mensagem" id="mensagemPeca" role="status"></p>
-                    </form>
-
-                    <div class="separador"></div>
-                    <h3>Peças cadastradas</h3>
-                    <div id="listaPecas" class="lista-registros">
-                        <p class="vazio">Nenhuma peça cadastrada nesta categoria.</p>
-                    </div>
-                </section>
-            </section>
-
-            <!-- MANUAL -->
-            <section class="pagina" id="pagina-manual">
-                <div class="cabecalho-pagina">
-                    <span class="sobretitulo">DOCUMENTAÇÃO</span>
-                    <h1>Manual de Montagem</h1>
-                    <p>Área para organizar o procedimento passo a passo.</p>
-                </div>
-
-                <div class="aviso">
-                    <strong>Importante</strong>
-                    <p>Os passos abaixo são uma estrutura inicial. O procedimento real deverá ser preenchido e validado com as instruções de trabalho da fábrica.</p>
-                </div>
-
-                <section class="painel passos-manual">
-                    <article class="passo">
-                        <span>01</span><div><h3>Preparação</h3><p>Registrar aqui as verificações e preparações confirmadas para o início da montagem.</p></div>
-                    </article>
-                    <article class="passo">
-                        <span>02</span><div><h3>Identificação das peças</h3><p>Documentar como identificar anéis, impulsores e facas conforme o procedimento aprovado.</p></div>
-                    </article>
-                    <article class="passo">
-                        <span>03</span><div><h3>Montagem</h3><p>Adicionar a sequência real de montagem depois de confirmar as etapas com a documentação da fábrica.</p></div>
-                    </article>
-                    <article class="passo">
-                        <span>04</span><div><h3>Conferência final</h3><p>Registrar os critérios de conferência e liberação definidos no procedimento oficial.</p></div>
-                    </article>
-                </section>
-            </section>
-
-            <!-- CONFIGURAÇÕES -->
-            <section class="pagina" id="pagina-configuracoes">
-                <div class="cabecalho-pagina">
-                    <span class="sobretitulo">SISTEMA</span>
-                    <h1>Configurações</h1>
-                    <p>Informações e gerenciamento dos dados locais.</p>
-                </div>
-
-                <section class="painel">
-                    <h2>Armazenamento</h2>
-                    <p>Os registros desta versão ficam salvos no armazenamento local deste navegador.</p>
-                    <p class="aviso-texto">Eles não são sincronizados automaticamente entre celular e computador. Evite limpar os dados do navegador antes de criar uma opção de backup.</p>
-                    <div class="separador"></div>
-                    <h3>Quantidade de registros</h3>
-                    <p id="resumoDados">Carregando dados...</p>                   
-                    <div class="separador"></div>
-                    <h2>Tema da aparência</h2>
-                    <p>Escolha como deseja visualizar o sistema.</p>
-                    <div class="seletor-tema">
-                        <button type="button" id="temaClaro" onclick="alterarTema('claro')">
-                            ☀️ Modo Claro
-                        </button>
-                        <button type="button" id="temaEscuro" onclick="alterarTema('escuro')">
-                            🌙 Modo Dark
-                        </button>
-                    </div>
-                    <p id="mensagemTema" class="mensagem" role="status"></p>
-
-                </section>
-            </section>
-
-        </main>
-
-        <footer class="rodape">
-            <span>ARMCO MONTAGEM · SISTEMA AUXILIAR</span>
-            <span>v1.0</span>
-        </footer>
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-logo">A</div>
+      <div>
+        <strong>ARMCO</strong>
+        <small>MONTAGEM LC25</small>
+      </div>
+      <button class="close-menu" id="closeMenu" type="button" aria-label="Fechar menu">×</button>
     </div>
-</div>
 
-<script src="script.js"></script>
+    <nav class="navigation">
+      <button class="nav-item active" data-page="inicio" type="button">🏠 Início</button>
+      <button class="nav-item" data-page="historico" type="button">📋 Histórico de Montagens</button>
+      <button class="nav-item" data-page="ferramentais" type="button">🧰 Cadastro de Ferramentais</button>
+      <button class="nav-item" data-page="manual" type="button">📘 Manual de Montagem</button>
+      <button class="nav-item" data-page="configuracoes" type="button">⚙️ Configurações</button>
+    </nav>
+
+    <div class="sidebar-footer">
+      ARMCO MONTAGEM LC25
+      <br>
+      <small>Sistema auxiliar de montagem</small>
+    </div>
+  </aside>
+
+  <div class="overlay" id="overlay"></div>
+
+  <main class="main-area">
+    <header class="topbar">
+      <button class="menu-toggle" id="menuToggle" type="button" aria-label="Abrir menu">☰</button>
+      <div class="topbar-brand">ARMCO <span>LC25</span></div>
+      <button class="theme-toggle" id="themeToggle" type="button">☀️ Tema claro</button>
+    </header>
+
+    <div class="content">
+
+      <!-- INÍCIO -->
+      <section class="page active" id="page-inicio">
+        <div class="hero">
+          <div>
+            <span class="eyebrow">SISTEMA AUXILIAR DE PRODUÇÃO</span>
+            <h1>ARMCO MONTAGEM LC25</h1>
+            <p>Organize as montagens, consulte os ferramentais e confira os cálculos antes de salvar cada montagem.</p>
+          </div>
+          <div class="hero-mark">LC25</div>
+        </div>
+
+        <div class="shortcut-grid">
+          <button class="shortcut" id="atalhoNova" type="button">
+            <span class="shortcut-icon">＋</span>
+            <strong>Nova montagem</strong>
+            <small>Preencher os dados da produção</small>
+          </button>
+          <button class="shortcut" data-goto="historico" type="button">
+            <span class="shortcut-icon">▤</span>
+            <strong>Histórico</strong>
+            <small>Consultar montagens salvas</small>
+          </button>
+          <button class="shortcut" data-goto="ferramentais" type="button">
+            <span class="shortcut-icon">⚙</span>
+            <strong>Ferramentais</strong>
+            <small>Consultar e cadastrar peças</small>
+          </button>
+        </div>
+
+        <div class="dashboard-grid">
+          <section class="panel" id="formSection">
+            <div class="section-heading">
+              <div>
+                <h2>Nova montagem</h2>
+                <p>Preencha os dados para conferir os resultados.</p>
+              </div>
+            </div>
+
+            <form id="formMontagem">
+              <div class="field">
+                <label for="cliente">Cliente / etapa</label>
+                <input id="cliente" name="cliente" required placeholder="Nome do cliente ou etapa">
+              </div>
+
+              <div class="form-row">
+                <div class="field">
+                  <label for="largura">Largura solicitada (cm)</label>
+                  <input id="largura" name="largura" type="text" inputmode="decimal" required placeholder="Ex.: 100,00">
+                </div>
+                <div class="field">
+                  <label for="espessura">Espessura do material (cm)</label>
+                  <input id="espessura" name="espessura" type="text" inputmode="decimal" required placeholder="Ex.: 0,50">
+                </div>
+              </div>
+
+              <div class="field" id="wrapFolgaManual" hidden>
+                <label for="folgaManual">Folga para espessura de 1,00 cm</label>
+                <select id="folgaManual" name="folgaManual">
+                  <option value="">Selecione a folga</option>
+                  <option value="0.30">0,30 cm</option>
+                  <option value="0.35">0,35 cm</option>
+                </select>
+              </div>
+
+              <div class="form-row">
+                <div class="field">
+                  <label for="tipoPedido">Tipo de pedido</label>
+                  <select id="tipoPedido" name="tipoPedido">
+                    <option value="Produção">Produção</option>
+                    <option value="Teste">Teste</option>
+                    <option value="Retrabalho">Retrabalho</option>
+                    <option value="Outro">Outro</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label for="cabecote">Cabeçote</label>
+                  <select id="cabecote" name="cabecote" required>
+                    <option value="">Selecione</option>
+                    <option value="Grande">Grande</option>
+                    <option value="Pequeno">Pequeno</option>
+                  </select>
+                </div>
+              </div>
+
+              <fieldset class="fieldset">
+                <legend>Quantidade de facas</legend>
+                <label class="radio-label">
+                  <input type="radio" name="qtdFacas" value="1" checked>
+                  Uma faca
+                </label>
+                <label class="radio-label">
+                  <input type="radio" name="qtdFacas" value="2">
+                  Duas facas
+                </label>
+              </fieldset>
+
+              <div class="field">
+                <label for="facaSuperior">Primeira faca / medida ou identificação</label>
+                <input id="facaSuperior" name="facaSuperior" required placeholder="Informe a medida ou identificação">
+              </div>
+
+              <div class="field" id="wrapFacaInferior" hidden>
+                <label for="facaInferior">Segunda faca (opcional)</label>
+                <input id="facaInferior" name="facaInferior" placeholder="Informe a segunda faca, se houver">
+              </div>
+
+              <div class="field">
+                <label for="canto">Medida do anel para cálculo do canto (cm)</label>
+                <input id="canto" name="canto" type="text" inputmode="decimal" required placeholder="Ex.: 10,00">
+                <small class="muted">Informe a medida do anel que será utilizado. O canto será calculado automaticamente.</small>
+              </div>
+
+              <div class="field">
+                <label for="observacoes">Observações (opcional)</label>
+                <textarea id="observacoes" name="observacoes" rows="3" placeholder="Anotações sobre a montagem"></textarea>
+              </div>
+
+              <button class="btn btn-primary full" type="submit">Conferir montagem →</button>
+              <p class="message" id="mensagemMontagem" role="alert"></p>
+            </form>
+          </section>
+
+          <section class="panel">
+            <div class="section-heading">
+              <div>
+                <h2>Últimas montagens</h2>
+                <p>Registros mais recentes do histórico.</p>
+              </div>
+              <button class="text-button" data-goto="historico" type="button">Ver todas</button>
+            </div>
+            <div class="record-list" id="ultimasMontagens"></div>
+          </section>
+        </div>
+      </section>
+
+      <!-- RESULTADOS -->
+      <section class="page" id="page-resultados">
+        <div class="page-heading">
+          <span class="eyebrow">CONFERÊNCIA</span>
+          <h1>Resultados da montagem</h1>
+          <p>Confira os dados, as medidas e os ferramentais antes de salvar.</p>
+        </div>
+
+        <section class="panel">
+          <div class="section-heading">
+            <div>
+              <h2>Resumo da montagem</h2>
+              <p>Dados informados e canto calculado.</p>
+            </div>
+          </div>
+          <div class="summary-grid" id="resultadoResumo"></div>
+        </section>
+
+        <section class="panel">
+          <div class="section-heading">
+            <div>
+              <h2>Cálculos</h2>
+              <p>Valores calculados com as regras atualmente confirmadas.</p>
+            </div>
+          </div>
+          <div class="metrics-grid" id="metricasResultado"></div>
+          <div class="notice warning" id="alertaCalculos"></div>
+        </section>
+
+        <section class="panel">
+          <div class="section-heading">
+            <div>
+              <h2>Disponibilidade dos ferramentais</h2>
+              <p>Marque temporariamente as peças que não podem ser usadas nesta montagem.</p>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="field">
+              <label for="buscaIndisponivel">Pesquisar por medida, identificação ou categoria</label>
+              <input id="buscaIndisponivel" placeholder="Digite para pesquisar">
+            </div>
+            <div class="field">
+              <label for="filtroIndisponivel">Categoria</label>
+              <select id="filtroIndisponivel">
+                <option value="TODOS">Todas as categorias</option>
+                <option value="ANEL">Anéis</option>
+                <option value="IMPULSOR">Impulsores</option>
+                <option value="FACA">Facas</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="availability-list" id="listaDisponibilidade"></div>
+          <button class="btn btn-secondary" id="recalcular" type="button">Atualizar combinações</button>
+        </section>
+
+        <div class="dashboard-grid">
+          <section class="panel">
+            <div class="section-heading">
+              <div>
+                <h2>Combinações de anéis</h2>
+                <p>As regras da medida-alvo ainda precisam ser confirmadas.</p>
+              </div>
+            </div>
+            <div class="option-list" id="opcoesAneis"></div>
+            <div class="field">
+              <label for="aneisEscolhidos">Anéis que serão utilizados</label>
+              <textarea id="aneisEscolhidos" rows="3" placeholder="Informe os anéis utilizados ou escreva Nenhum"></textarea>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="section-heading">
+              <div>
+                <h2>Combinações de impulsores</h2>
+                <p>Seleção automática entre as reduções testadas.</p>
+              </div>
+            </div>
+            <div class="option-list" id="opcoesImpulsores"></div>
+
+            <div class="field" hidden>
+              <label for="reducaoEscolhida">Redução selecionada</label>
+              <input id="reducaoEscolhida" readonly>
+            </div>
+
+            <div class="field">
+              <label for="impulsoresEscolhidos">Impulsores selecionados</label>
+              <textarea id="impulsoresEscolhidos" rows="3" placeholder="Combinação automática ou escreva Nenhum"></textarea>
+            </div>
+          </section>
+        </div>
+
+        <section class="panel">
+          <div class="field">
+            <label for="observacaoResultado">Observações da escolha</label>
+            <textarea id="observacaoResultado" rows="3" placeholder="Observações adicionais sobre as peças escolhidas"></textarea>
+          </div>
+
+          <div class="button-row">
+            <button class="btn btn-secondary" id="voltarEdicao" type="button">← Voltar à edição</button>
+            <button class="btn btn-primary" id="confirmarMontagem" type="button">Confirmar e salvar montagem</button>
+          </div>
+          <p class="message" id="mensagemResultado" role="alert"></p>
+        </section>
+      </section>
+
+      <!-- HISTÓRICO -->
+      <section class="page" id="page-historico">
+        <div class="page-heading">
+          <span class="eyebrow">REGISTROS</span>
+          <h1>Histórico de montagens</h1>
+          <p>Pesquise as montagens salvas neste navegador.</p>
+        </div>
+
+        <section class="panel">
+          <div class="field">
+            <label for="buscaHistorico">Pesquisar histórico</label>
+            <input id="buscaHistorico" placeholder="Cliente, medida, cabeçote, ferramenta...">
+          </div>
+          <div class="record-list" id="listaHistorico"></div>
+        </section>
+      </section>
+
+      <!-- FERRAMENTAIS -->
+      <section class="page" id="page-ferramentais">
+        <div class="page-heading">
+          <span class="eyebrow">CADASTRO</span>
+          <h1>Cadastro de ferramentais</h1>
+          <p>Cadastre e consulte anéis, impulsores e facas.</p>
+        </div>
+
+        <div class="category-grid">
+          <button class="category-card selected" data-category="ANEL" type="button">
+            <span>◉</span>
+            <strong>Anéis</strong>
+            <small>Cadastrar medidas de anéis</small>
+          </button>
+          <button class="category-card" data-category="IMPULSOR" type="button">
+            <span>⚙</span>
+            <strong>Impulsores</strong>
+            <small>Cadastrar medidas de impulsores</small>
+          </button>
+          <button class="category-card" data-category="FACA" type="button">
+            <span>▰</span>
+            <strong>Facas</strong>
+            <small>Cadastrar medidas de facas</small>
+          </button>
+        </div>
+
+        <div class="dashboard-grid">
+          <section class="panel">
+            <h2 id="tituloCadastro">Cadastrar anel</h2>
+            <p class="muted">Os dados ficam armazenados localmente neste navegador.</p>
+
+            <form id="formFerramental">
+              <div class="field">
+                <label for="medidaFerramental">Medida (cm)</label>
+                <input id="medidaFerramental" type="text" inputmode="decimal" required placeholder="Ex.: 10,00">
+              </div>
+
+              <div class="field">
+                <label for="nomeFerramental">Identificação (opcional)</label>
+                <input id="nomeFerramental" placeholder="Código ou nome da peça">
+              </div>
+
+              <button class="btn btn-primary full" type="submit">Cadastrar ferramental</button>
+              <p class="message" id="mensagemFerramental" role="status"></p>
+            </form>
+          </section>
+
+          <section class="panel">
+            <div class="section-heading">
+              <div>
+                <h2>Ferramentais cadastrados</h2>
+                <p>Pesquise por categoria, medida ou identificação.</p>
+              </div>
+            </div>
+
+            <div class="field">
+              <label for="filtroCategoria">Categoria</label>
+              <select id="filtroCategoria">
+                <option value="TODOS">Todas</option>
+                <option value="ANEL">Anéis</option>
+                <option value="IMPULSOR">Impulsores</option>
+                <option value="FACA">Facas</option>
+              </select>
+            </div>
+
+            <div class="field">
+              <label for="buscaFerramental">Pesquisar</label>
+              <input id="buscaFerramental" placeholder="Medida ou identificação">
+            </div>
+
+            <div class="record-list" id="listaFerramentais"></div>
+          </section>
+        </div>
+      </section>
+
+      <!-- MANUAL -->
+      <section class="page" id="page-manual">
+        <div class="page-heading">
+          <span class="eyebrow">INSTRUÇÕES</span>
+          <h1>Manual de montagem</h1>
+          <p>Regras de cálculo e utilização do sistema.</p>
+        </div>
+
+        <section class="panel">
+          <h2>1. Preenchimento</h2>
+          <ul class="manual-list">
+            <li>Informe o cliente ou a etapa, a largura, a espessura e o cabeçote.</li>
+            <li>Informe a primeira faca. A segunda faca é opcional quando selecionadas duas facas.</li>
+            <li>Informe a medida do anel que será utilizado para calcular o canto.</li>
+            <li>Confira a prévia dos resultados antes de salvar a montagem.</li>
+          </ul>
+
+          <hr>
+
+          <h2>2. Tabela de folgas</h2>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th>Espessura (cm)</th><th>Folga (cm)</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>0,15 a 0,35</td><td>0,05</td></tr>
+                <tr><td>0,40 a 0,55</td><td>0,10</td></tr>
+                <tr><td>0,60 a 0,70</td><td>0,15</td></tr>
+                <tr><td>0,75 a 0,85</td><td>0,20</td></tr>
+                <tr><td>0,90 a 0,95</td><td>0,25</td></tr>
+                <tr><td>1,00</td><td>Escolher 0,30 ou 0,35</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <hr>
+
+          <h2>3. Cálculo do canto</h2>
+          <p>O canto é calculado com base na medida do anel escolhido, somada à metade da folga.</p>
+          <p><strong>Regra:</strong> canto = medida do anel + (folga ÷ 2).</p>
+          <p><strong>Exceção:</strong> se a folga for 0,05 cm, acrescentar mais 0,05 cm ao resultado.</p>
+          <p>Exemplo: anel de 10,00 cm e folga de 0,05 cm resultam em canto de 10,075 cm.</p>
+
+          <hr>
+
+          <h2>4. Contra-corte</h2>
+          <p>Contra-corte = largura − (2 × medida da faca) − folga. O cálculo só é feito quando a primeira faca é informada como valor numérico.</p>
+
+          <hr>
+
+          <h2>5. Impulsores e anéis</h2>
+          <ul class="manual-list">
+            <li>O sistema testa as reduções de 0,10 cm, 0,15 cm e 0,20 cm para os impulsores.</li>
+            <li>As combinações de impulsores priorizam menos medidas diferentes, menos peças e, em caso de empate, a menor redução.</li>
+            <li>A medida-alvo para a combinação dos anéis ainda precisa ser confirmada antes de automatizar essa seleção.</li>
+          </ul>
+
+          <hr>
+
+          <h2>6. Armazenamento</h2>
+          <p>O histórico e os ferramentais são guardados no armazenamento local do navegador. Exporte backups regularmente para evitar perda dos dados.</p>
+        </section>
+      </section>
+
+      <!-- CONFIGURAÇÕES -->
+      <section class="page" id="page-configuracoes">
+        <div class="page-heading">
+          <span class="eyebrow">SISTEMA</span>
+          <h1>Configurações</h1>
+          <p>Aparência e cópia de segurança dos dados.</p>
+        </div>
+
+        <section class="panel">
+          <h2>Aparência</h2>
+          <p class="muted">Escolha entre o tema preto e o tema claro.</p>
+          <button class="btn btn-secondary" id="themeToggleConfig" type="button">☀️ Tema claro</button>
+        </section>
+
+        <section class="panel">
+          <h2>Backup dos dados</h2>
+          <p class="muted">Exporte o histórico de montagens, os ferramentais cadastrados e a preferência de tema em um arquivo JSON.</p>
+          <button class="btn btn-primary" id="exportarDados" type="button">Exportar backup JSON</button>
+          <p class="message" id="mensagemConfiguracoes" role="status"></p>
+        </section>
+      </section>
+
+    </div>
+  </main>
 </body>
 </html>
