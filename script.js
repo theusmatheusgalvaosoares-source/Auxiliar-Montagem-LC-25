@@ -1,445 +1,1164 @@
 
-const CHAVE_MONTAGENS = "armco_montagens_v1";
-const CHAVE_PECAS = "armco_pecas_v1";
+/* =========================================
+   ARMCO MONTAGEM LC25
+   CONFIGURAÇÃO E ARMAZENAMENTO
+========================================= */
 
-let categoriaPecaAtual = "ANEL";
+const CHAVES = {
+  montagens: "armco_montagens_v1",
+  pecas: "armco_pecas_v1",
+  tema: "armco_tema"
+};
 
-function lerDados(chave) {
-    try {
-        const dados = JSON.parse(localStorage.getItem(chave) || "[]");
-        return Array.isArray(dados) ? dados : [];
-    } catch {
-        return [];
-    }
+const $ = id => document.getElementById(id);
+
+let montagemAtual = null;
+let categoriaAtual = "ANEL";
+let indisponiveisBusca = new Set();
+let gruposImpulsores = [];
+let reducaoAtual = null;
+let combinacaoImpulsorAutomatica = null;
+
+function lerLista(chave) {
+  try {
+    const dados = JSON.parse(localStorage.getItem(chave) || "[]");
+    return Array.isArray(dados) ? dados : [];
+  } catch {
+    return [];
+  }
 }
 
-function salvarDados(chave, dados) {
-    try {
-        localStorage.setItem(chave, JSON.stringify(dados));
-        return true;
-    } catch {
-        return false;
-    }
+function salvarLista(chave, dados) {
+  localStorage.setItem(chave, JSON.stringify(dados));
 }
 
-function gerarId() {
-    return Date.now().toString(36) +
-        Math.random().toString(36).slice(2, 8);
+function numero(valor) {
+  if (typeof valor === "number") return valor;
+
+  const texto = String(valor ?? "")
+    .trim()
+    .replace(/\s/g, "")
+    .replace(",", ".");
+
+  return texto === "" ? NaN : Number(texto);
 }
 
-function numeroValido(texto) {
-    const normalizado = String(texto).trim().replace(",", ".");
-    if (!normalizado || !/^\d+(\.\d+)?$/.test(normalizado)) {
-        return null;
-    }
+function formatar(valor, casas = 3) {
+  if (!Number.isFinite(Number(valor))) return "—";
 
-    const numero = Number(normalizado);
-    return Number.isFinite(numero) && numero > 0 ? numero : null;
+  return Number(valor).toLocaleString("pt-BR", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: casas
+  });
 }
 
-function formatarNumero(valor) {
-    return Number(valor).toLocaleString("pt-BR", {
-        maximumFractionDigits: 4
-    });
+function escapar(valor) {
+  return String(valor ?? "").replace(/[&<>"']/g, c => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#039;"
+  })[c]);
 }
 
-function escaparHTML(valor) {
-    return String(valor ?? "").replace(/[&<>"']/g, caractere => ({
-        "&": "&amp;",
-        "<": "&lt;",
-        ">": "&gt;",
-        '"': "&quot;",
-        "'": "&#39;"
-    })[caractere]);
+function novoId() {
+  return Date.now().toString(36) +
+    Math.random().toString(36).slice(2, 8);
 }
 
-function dataAtual() {
-    return new Date().toLocaleString("pt-BR", {
-        dateStyle: "short",
-        timeStyle: "short"
-    });
+function nomeCategoria(categoria) {
+  return ({
+    ANEL: "Anel",
+    IMPULSOR: "Impulsor",
+    FACA: "Faca"
+  })[categoria] || categoria;
 }
 
-/* MENU E NAVEGAÇÃO */
+/* =========================================
+   TEMA
+========================================= */
 
-function alternarMenu() {
-    const sidebar = document.getElementById("sidebar");
-    const fundo = document.getElementById("fundoMenu");
+function aplicarTema() {
+  const tema = localStorage.getItem(CHAVES.tema) || "escuro";
 
-    const aberto = sidebar.classList.toggle("aberto");
-    fundo.classList.toggle("visivel", aberto);
+  document.body.classList.toggle("dark", tema === "escuro");
+
+  const texto = tema === "escuro"
+    ? "☀️ Tema claro"
+    : "🌑 Tema preto";
+
+  if ($("themeToggle")) $("themeToggle").textContent = texto;
+  if ($("themeToggleConfig")) $("themeToggleConfig").textContent = texto;
 }
 
-function fecharMenu() {
-    document.getElementById("sidebar").classList.remove("aberto");
-    document.getElementById("fundoMenu").classList.remove("visivel");
+function alternarTema() {
+  const atual = document.body.classList.contains("dark")
+    ? "escuro"
+    : "claro";
+
+  localStorage.setItem(
+    CHAVES.tema,
+    atual === "escuro" ? "claro" : "escuro"
+  );
+
+  aplicarTema();
 }
 
-function irPara(pagina) {
-    document.querySelectorAll(".pagina").forEach(secao => {
-        secao.classList.remove("ativa");
-    });
+$("themeToggle")?.addEventListener("click", alternarTema);
+$("themeToggleConfig")?.addEventListener("click", alternarTema);
 
-    const destino = document.getElementById(`pagina-${pagina}`);
-    if (!destino) return;
+/* =========================================
+   NAVEGAÇÃO
+========================================= */
 
-    destino.classList.add("ativa");
+function abrirPagina(nome) {
+  document.querySelectorAll(".page").forEach(pagina => {
+    pagina.classList.remove("active");
+  });
 
-    document.querySelectorAll(".nav-item").forEach(botao => {
-        botao.classList.toggle(
-            "ativo",
-            botao.dataset.pagina === pagina
-        );
-    });
+  $("page-" + nome)?.classList.add("active");
 
-    fecharMenu();
-    window.scrollTo({ top: 0, behavior: "smooth" });
+  document.querySelectorAll("[data-page]").forEach(botao => {
+    botao.classList.toggle("active", botao.dataset.page === nome);
+  });
 
-    if (pagina === "historico") renderizarHistorico();
-    if (pagina === "pecas") renderizarPecas();
-    if (pagina === "configuracoes") atualizarResumoDados();
+  document.body.classList.remove("menu-open");
+
+  if (nome === "historico") atualizarHistorico();
+  if (nome === "ferramentais") atualizarFerramentais();
+  if (nome === "inicio") atualizarUltimasMontagens();
+
+  window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
-function focarFormulario() {
-    irPara("inicio");
-
-    setTimeout(() => {
-        document.getElementById("formularioMontagem").scrollIntoView({
-            behavior: "smooth",
-            block: "start"
-        });
-
-        document.getElementById("cliente").focus({
-            preventScroll: true
-        });
-    }, 100);
-}
-
-/* QUANTIDADE DE FACAS */
-
-document.querySelectorAll('input[name="quantidadeFacas"]').forEach(radio => {
-    radio.addEventListener("change", atualizarCamposFacas);
+document.querySelectorAll("[data-page]").forEach(botao => {
+  botao.addEventListener("click", () => abrirPagina(botao.dataset.page));
 });
 
-function atualizarCamposFacas() {
-    const quantidade = document.querySelector(
-        'input[name="quantidadeFacas"]:checked'
-    ).value;
-
-    const campoInferior = document.getElementById("campoFacaInferior");
-    const facaInferior = document.getElementById("facaInferior");
-
-    campoInferior.hidden = quantidade !== "2";
-    facaInferior.required = quantidade === "2";
-
-    if (quantidade !== "2") {
-        facaInferior.value = "";
-    }
-}
-
-/* REGISTRO DE MONTAGENS */
-
-document.getElementById("formMontagem").addEventListener("submit", evento => {
-    evento.preventDefault();
-
-    const formulario = evento.currentTarget;
-    const mensagem = document.getElementById("mensagemMontagem");
-
-    const cliente = document.getElementById("cliente").value.trim();
-    const largura = numeroValido(document.getElementById("largura").value);
-    const espessuraTexto = document.getElementById("espessura").value.trim();
-    const quantidade = document.querySelector(
-        'input[name="quantidadeFacas"]:checked'
-    ).value;
-    const facaSuperior = document.getElementById("facaSuperior").value.trim();
-    const facaInferior = document.getElementById("facaInferior").value.trim();
-
-    mensagem.className = "mensagem";
-
-    if (!cliente || !largura || !espessuraTexto || !facaSuperior) {
-        mensagem.textContent = "Confira os campos obrigatórios e a largura.";
-        mensagem.classList.add("erro");
-        return;
-    }
-
-    if (quantidade === "2" && !facaInferior) {
-        mensagem.textContent = "Informe a faca inferior para a montagem com duas facas.";
-        mensagem.classList.add("erro");
-        return;
-    }
-
-    const montagens = lerDados(CHAVE_MONTAGENS);
-
-    montagens.unshift({
-        id: gerarId(),
-        cliente,
-        tipoPedido: document.getElementById("tipoPedido").value,
-        largura,
-        espessura: espessuraTexto,
-        quantidadeFacas: quantidade,
-        facaSuperior,
-        facaInferior: quantidade === "2" ? facaInferior : "",
-        observacoes: document.getElementById("observacoes").value.trim(),
-        data: dataAtual(),
-        criadoEm: new Date().toISOString()
-    });
-
-    if (!salvarDados(CHAVE_MONTAGENS, montagens)) {
-        mensagem.textContent = "Não foi possível salvar. Verifique o armazenamento do navegador.";
-        mensagem.classList.add("erro");
-        return;
-    }
-
-    formulario.reset();
-    atualizarCamposFacas();
-
-    mensagem.textContent = "Montagem registrada com sucesso!";
-    mensagem.classList.add("sucesso");
-
-    renderizarUltimasMontagens();
+document.querySelectorAll("[data-goto]").forEach(botao => {
+  botao.addEventListener("click", () => abrirPagina(botao.dataset.goto));
 });
 
-/* HISTÓRICO */
-
-function montarCartaoMontagem(montagem, permitirExcluir = false) {
-    const facas = montagem.quantidadeFacas === "2"
-        ? `2 facas: superior ${escaparHTML(montagem.facaSuperior)} / inferior ${escaparHTML(montagem.facaInferior)}`
-        : `1 faca: ${escaparHTML(montagem.facaSuperior)}`;
-
-    return `
-        <article class="registro">
-            <div class="registro-conteudo">
-                <strong>${escaparHTML(montagem.cliente)}</strong>
-                <small>${escaparHTML(montagem.tipoPedido)} · ${formatarNumero(montagem.largura)} cm · Espessura: ${escaparHTML(montagem.espessura)}</small>
-                <small>${facas}</small>
-                <small>${escaparHTML(montagem.data)}</small>
-                ${montagem.observacoes ? `<small>Obs.: ${escaparHTML(montagem.observacoes)}</small>` : ""}
-            </div>
-            ${permitirExcluir ? `
-                <div class="registro-acoes">
-                    <button class="botao-excluir" onclick="excluirMontagem('${montagem.id}')">
-                        Excluir
-                    </button>
-                </div>
-            ` : ""}
-        </article>
-    `;
-}
-
-function renderizarUltimasMontagens() {
-    const elemento = document.getElementById("ultimasMontagens");
-    const montagens = lerDados(CHAVE_MONTAGENS).slice(0, 5);
-
-    elemento.innerHTML = montagens.length
-        ? montagens.map(item => montarCartaoMontagem(item)).join("")
-        : '<p class="vazio">Nenhuma montagem registrada ainda.</p>';
-}
-
-function renderizarHistorico() {
-    const elemento = document.getElementById("listaHistorico");
-    const busca = document.getElementById("buscaHistorico").value
-        .trim().toLocaleLowerCase("pt-BR");
-
-    const montagens = lerDados(CHAVE_MONTAGENS).filter(item => {
-        const texto = [
-            item.cliente,
-            item.tipoPedido,
-            item.largura,
-            item.espessura,
-            item.facaSuperior,
-            item.facaInferior,
-            item.observacoes
-        ].join(" ").toLocaleLowerCase("pt-BR");
-
-        return texto.includes(busca);
-    });
-
-    elemento.innerHTML = montagens.length
-        ? montagens.map(item => montarCartaoMontagem(item, true)).join("")
-        : '<p class="vazio">Nenhuma montagem encontrada.</p>';
-}
-
-function excluirMontagem(id) {
-    if (!confirm("Deseja realmente excluir este registro de montagem?")) {
-        return;
-    }
-
-    const montagens = lerDados(CHAVE_MONTAGENS).filter(item => item.id !== id);
-
-    if (!salvarDados(CHAVE_MONTAGENS, montagens)) {
-        alert("Não foi possível atualizar os registros.");
-        return;
-    }
-
-    renderizarHistorico();
-    renderizarUltimasMontagens();
-}
-
-/* CADASTRO DE PEÇAS */
-
-function selecionarPeca(categoria, botao) {
-    categoriaPecaAtual = categoria;
-    document.getElementById("tipoPeca").value = categoria;
-
-    document.querySelectorAll(".cartao-peca").forEach(cartao => {
-        cartao.classList.remove("selecionado");
-    });
-
-    botao.classList.add("selecionado");
-
-    const nomes = {
-        ANEL: "Anéis",
-        IMPULSOR: "Impulsores",
-        FACA: "Facas"
-    };
-
-    document.getElementById("tituloPeca").textContent =
-        `Cadastro de ${nomes[categoria]}`;
-
-    document.getElementById("mensagemPeca").textContent = "";
-    renderizarPecas();
-}
-
-document.getElementById("formPeca").addEventListener("submit", evento => {
-    evento.preventDefault();
-
-    const nome = document.getElementById("nomePeca").value.trim();
-    const medida = numeroValido(document.getElementById("medidaPeca").value);
-    const mensagem = document.getElementById("mensagemPeca");
-
-    mensagem.className = "mensagem";
-
-    if (!nome || !medida) {
-        mensagem.textContent = "Informe a identificação e uma medida válida em cm.";
-        mensagem.classList.add("erro");
-        return;
-    }
-
-    const pecas = lerDados(CHAVE_PECAS);
-
-    pecas.push({
-        id: gerarId(),
-        categoria: categoriaPecaAtual,
-        nome,
-        medida,
-        data: dataAtual()
-    });
-
-    if (!salvarDados(CHAVE_PECAS, pecas)) {
-        mensagem.textContent = "Não foi possível salvar esta peça.";
-        mensagem.classList.add("erro");
-        return;
-    }
-
-    document.getElementById("nomePeca").value = "";
-    document.getElementById("medidaPeca").value = "";
-
-    mensagem.textContent = "Peça cadastrada com sucesso!";
-    mensagem.classList.add("sucesso");
-
-    renderizarPecas();
+$("atalhoNova")?.addEventListener("click", () => {
+  abrirPagina("inicio");
+  $("formSection")?.scrollIntoView({
+    behavior: "smooth",
+    block: "start"
+  });
 });
 
-function renderizarPecas() {
-    const elemento = document.getElementById("listaPecas");
-    const pecas = lerDados(CHAVE_PECAS).filter(
-        peca => peca.categoria === categoriaPecaAtual
+$("menuToggle")?.addEventListener("click", () => {
+  document.body.classList.toggle("menu-open");
+});
+
+$("closeMenu")?.addEventListener("click", () => {
+  document.body.classList.remove("menu-open");
+});
+
+$("overlay")?.addEventListener("click", () => {
+  document.body.classList.remove("menu-open");
+});
+
+/* =========================================
+   FOLGAS
+========================================= */
+
+function obterFolga(espessura, folgaManual) {
+  if (Math.abs(espessura - 1.00) < 0.000001) {
+    const escolha = numero(folgaManual);
+    return escolha === 0.30 || escolha === 0.35
+      ? escolha
+      : null;
+  }
+
+  const faixas = [
+    [0.15, 0.35, 0.05],
+    [0.40, 0.55, 0.10],
+    [0.60, 0.70, 0.15],
+    [0.75, 0.85, 0.20],
+    [0.90, 0.95, 0.25]
+  ];
+
+  const faixa = faixas.find(([min, max]) =>
+    espessura >= min - 0.000001 &&
+    espessura <= max + 0.000001
+  );
+
+  return faixa ? faixa[2] : null;
+}
+
+$("espessura")?.addEventListener("input", () => {
+  const espessura = numero($("espessura").value);
+
+  $("wrapFolgaManual").hidden =
+    !(Number.isFinite(espessura) &&
+      Math.abs(espessura - 1.00) < 0.000001);
+});
+
+/* =========================================
+   FACAS
+========================================= */
+
+function atualizarCampoSegundaFaca() {
+  const quantidade = document.querySelector(
+    'input[name="qtdFacas"]:checked'
+  )?.value || "1";
+
+  $("wrapFacaInferior").hidden = quantidade !== "2";
+  $("facaInferior").required = false;
+}
+
+document.querySelectorAll('input[name="qtdFacas"]').forEach(radio => {
+  radio.addEventListener("change", atualizarCampoSegundaFaca);
+});
+
+/* =========================================
+   CADASTRO DE FERRAMENTAIS
+========================================= */
+
+function normalizarPeca(peca) {
+  return {
+    ...peca,
+    id: peca.id || novoId(),
+    categoria: String(peca.categoria || peca.tipo || "ANEL").toUpperCase(),
+    medida: numero(peca.medida ?? peca.largura),
+    identificacao: String(peca.identificacao || peca.nome || ""),
+    indisponivel: Boolean(peca.indisponivel)
+  };
+}
+
+function obterPecas(categoria = "TODOS") {
+  return lerLista(CHAVES.pecas)
+    .map(normalizarPeca)
+    .filter(p => Number.isFinite(p.medida) && p.medida > 0)
+    .filter(p => categoria === "TODOS" || p.categoria === categoria);
+}
+
+function pecasDisponiveis(categoria) {
+  return obterPecas(categoria).filter(p =>
+    !p.indisponivel &&
+    !indisponiveisBusca.has(String(p.id))
+  );
+}
+
+document.querySelectorAll("[data-category]").forEach(botao => {
+  botao.addEventListener("click", () => {
+    categoriaAtual = botao.dataset.category;
+
+    document.querySelectorAll("[data-category]").forEach(item => {
+      item.classList.toggle("selected", item === botao);
+    });
+
+    $("tituloCadastro").textContent =
+      "Cadastrar " + ({
+        ANEL: "anel",
+        IMPULSOR: "impulsor",
+        FACA: "faca"
+      })[categoriaAtual];
+
+    $("mensagemFerramental").textContent = "";
+  });
+});
+
+$("formFerramental")?.addEventListener("submit", evento => {
+  evento.preventDefault();
+
+  const medida = numero($("medidaFerramental").value);
+  const identificacao = $("nomeFerramental").value.trim();
+
+  if (!Number.isFinite(medida) || medida <= 0) {
+    $("mensagemFerramental").textContent =
+      "Informe uma medida válida e maior que zero.";
+    return;
+  }
+
+  const pecas = lerLista(CHAVES.pecas);
+
+  const duplicada = pecas.some(peca => {
+    const p = normalizarPeca(peca);
+
+    return p.categoria === categoriaAtual &&
+      Math.abs(p.medida - medida) < 0.0001 &&
+      p.identificacao === identificacao;
+  });
+
+  if (duplicada) {
+    $("mensagemFerramental").textContent =
+      "Essa peça com a mesma identificação já está cadastrada.";
+    return;
+  }
+
+  pecas.push({
+    id: novoId(),
+    categoria: categoriaAtual,
+    medida,
+    identificacao,
+    indisponivel: false,
+    criadoEm: new Date().toISOString()
+  });
+
+  salvarLista(CHAVES.pecas, pecas);
+  $("formFerramental").reset();
+
+  $("mensagemFerramental").textContent =
+    "Ferramental cadastrado com sucesso.";
+
+  atualizarFerramentais();
+  atualizarDisponibilidade();
+});
+
+$("filtroCategoria")?.addEventListener("change", atualizarFerramentais);
+$("buscaFerramental")?.addEventListener("input", atualizarFerramentais);
+
+function atualizarFerramentais() {
+  const area = $("listaFerramentais");
+  if (!area) return;
+
+  const filtro = $("filtroCategoria").value;
+  const busca = $("buscaFerramental").value.trim().toLowerCase();
+
+  const pecas = obterPecas(filtro)
+    .filter(p =>
+      `${p.medida} ${p.identificacao} ${p.categoria}`
+        .toLowerCase().includes(busca)
+    )
+    .sort((a, b) =>
+      a.categoria.localeCompare(b.categoria) || a.medida - b.medida
     );
 
-    elemento.innerHTML = pecas.length
-        ? pecas.map(peca => `
-            <article class="registro">
-                <div class="registro-conteudo">
-                    <strong>${escaparHTML(peca.nome)}</strong>
-                    <small>${formatarNumero(peca.medida)} cm · Cadastrada em ${escaparHTML(peca.data)}</small>
-                </div>
-                <div class="registro-acoes">
-                    <button class="botao-excluir" onclick="excluirPeca('${peca.id}')">
-                        Excluir
-                    </button>
-                </div>
-            </article>
-        `).join("")
-        : '<p class="vazio">Nenhuma peça cadastrada nesta categoria.</p>';
+  if (!pecas.length) {
+    area.innerHTML = '<p class="empty">Nenhum ferramental encontrado.</p>';
+    return;
+  }
+
+  area.innerHTML = pecas.map(p => `
+    <article class="record-item">
+      <strong>${escapar(nomeCategoria(p.categoria))} · ${formatar(p.medida)} cm</strong>
+      <div class="record-meta">${escapar(p.identificacao || "Sem identificação")}</div>
+      <div class="record-actions">
+        <button class="small-btn danger" data-excluir-peca="${escapar(p.id)}">
+          Excluir
+        </button>
+      </div>
+    </article>
+  `).join("");
+
+  area.querySelectorAll("[data-excluir-peca]").forEach(botao => {
+    botao.addEventListener("click", () => {
+      if (!confirm("Deseja excluir este ferramental?")) return;
+
+      const id = botao.dataset.excluirPeca;
+
+      salvarLista(
+        CHAVES.pecas,
+        lerLista(CHAVES.pecas).filter(p => String(p.id) !== String(id))
+      );
+
+      atualizarFerramentais();
+      atualizarDisponibilidade();
+    });
+  });
 }
 
-function excluirPeca(id) {
-    if (!confirm("Deseja realmente excluir esta peça?")) return;
+/* =========================================
+   CÁLCULO DO CANTO
+========================================= */
 
-    const pecas = lerDados(CHAVE_PECAS).filter(peca => peca.id !== id);
+/*
+  Canto = medida do anel escolhido + metade da folga.
 
-    if (!salvarDados(CHAVE_PECAS, pecas)) {
-        alert("Não foi possível atualizar o cadastro.");
-        return;
+  Exceção:
+  Se a folga for 0,05 cm, acrescentar mais 0,05 cm.
+
+  Anel 10,00 + folga 0,05 = canto 10,075 cm.
+*/
+
+function calcularCanto(medidaAnel, folga) {
+  if (!Number.isFinite(medidaAnel) || medidaAnel <= 0) return null;
+  if (!Number.isFinite(folga) || folga < 0) return null;
+
+  let canto = medidaAnel + folga / 2;
+
+  if (Math.abs(folga - 0.05) < 0.000001) {
+    canto += 0.05;
+  }
+
+  return Math.round(canto * 10000) / 10000;
+}
+
+function atualizarRotuloCanto() {
+  const campo = $("canto");
+  if (!campo) return;
+
+  const rotulo = document.querySelector('label[for="canto"]');
+
+  if (rotulo) {
+    rotulo.textContent = "Medida do anel para cálculo do canto (cm)";
+  }
+
+  campo.placeholder = "Ex.: 10,00";
+  campo.min = "0";
+  campo.step = "any";
+}
+
+/* =========================================
+   LER E VALIDAR MONTAGEM
+========================================= */
+
+function lerMontagem() {
+  const cliente = $("cliente").value.trim();
+  const largura = numero($("largura").value);
+  const espessura = numero($("espessura").value);
+
+  const qtdFacas = Number(
+    document.querySelector('input[name="qtdFacas"]:checked')?.value || 1
+  );
+
+  const folga = obterFolga(espessura, $("folgaManual").value);
+
+  if (!cliente) throw new Error("Informe o cliente ou a etapa.");
+
+  if (!Number.isFinite(largura) || largura <= 0) {
+    throw new Error("Informe uma largura válida.");
+  }
+
+  if (!Number.isFinite(espessura) || espessura <= 0) {
+    throw new Error("Informe uma espessura válida.");
+  }
+
+  if (folga === null) {
+    throw new Error("Não há folga definida para essa espessura. Confira a tabela.");
+  }
+
+  if (!$("cabecote").value) {
+    throw new Error("Selecione o cabeçote.");
+  }
+
+  if (!$("facaSuperior").value.trim()) {
+    throw new Error("Informe a primeira faca.");
+  }
+
+  const medidaAnel = numero($("canto").value);
+
+  if (!Number.isFinite(medidaAnel) || medidaAnel <= 0) {
+    throw new Error("Informe a medida válida do anel que será utilizado.");
+  }
+
+  const cantoCalculado = calcularCanto(medidaAnel, folga);
+
+  if (cantoCalculado === null) {
+    throw new Error("Não foi possível calcular o canto.");
+  }
+
+  return {
+    id: novoId(),
+    data: new Date().toISOString(),
+    cliente,
+    largura,
+    espessura,
+    folga,
+    tipoPedido: $("tipoPedido").value,
+    cabecote: $("cabecote").value,
+    qtdFacas,
+    facaSuperior: $("facaSuperior").value.trim(),
+    facaInferior: qtdFacas === 2 ? $("facaInferior").value.trim() : "",
+    medidaAnel,
+    canto: cantoCalculado,
+    cantoCalculado,
+    observacoes: $("observacoes").value.trim()
+  };
+}
+
+$("formMontagem")?.addEventListener("submit", evento => {
+  evento.preventDefault();
+
+  try {
+    montagemAtual = lerMontagem();
+
+    indisponiveisBusca.clear();
+    gruposImpulsores = [];
+    reducaoAtual = null;
+    combinacaoImpulsorAutomatica = null;
+
+    $("mensagemMontagem").textContent = "";
+    $("mensagemResultado").textContent = "";
+    $("buscaIndisponivel").value = "";
+    $("filtroIndisponivel").value = "TODOS";
+    $("aneisEscolhidos").value = "";
+    $("impulsoresEscolhidos").value = "";
+    $("reducaoEscolhida").value = "";
+    $("observacaoResultado").value = "";
+
+    abrirPagina("resultados");
+    mostrarResumo();
+    atualizarDisponibilidade();
+    gerarCombinacoes();
+  } catch (erro) {
+    $("mensagemMontagem").textContent = erro.message;
+  }
+});
+
+/* =========================================
+   RESUMO
+========================================= */
+
+function mostrarResumo() {
+  const m = montagemAtual;
+  if (!m) return;
+
+  const dados = [
+    ["Cliente / etapa", m.cliente],
+    ["Largura solicitada", formatar(m.largura) + " cm"],
+    ["Espessura", formatar(m.espessura) + " cm"],
+    ["Folga calculada", formatar(m.folga) + " cm"],
+    ["Tipo de pedido", m.tipoPedido],
+    ["Cabeçote", m.cabecote],
+    ["Primeira faca", m.facaSuperior],
+    [
+      "Segunda faca",
+      m.qtdFacas === 2 ? (m.facaInferior || "Não informada") : "Não utilizada"
+    ],
+    ["Medida do anel utilizado", formatar(m.medidaAnel) + " cm"],
+    ["Canto calculado", formatar(m.cantoCalculado) + " cm"]
+  ];
+
+  $("resultadoResumo").innerHTML = dados.map(([titulo, valor]) => `
+    <div class="summary-cell">
+      <small>${escapar(titulo)}</small>
+      <strong>${escapar(valor)}</strong>
+    </div>
+  `).join("") + (
+    m.observacoes ? `<p>${escapar(m.observacoes)}</p>` : ""
+  );
+}
+
+/* =========================================
+   DISPONIBILIDADE TEMPORÁRIA
+========================================= */
+
+function atualizarDisponibilidade() {
+  const area = $("listaDisponibilidade");
+  if (!area) return;
+
+  const categoria = $("filtroIndisponivel").value;
+  const busca = $("buscaIndisponivel").value.trim().toLowerCase();
+
+  const pecas = obterPecas(categoria).filter(p =>
+    `${p.categoria} ${p.medida} ${p.identificacao}`
+      .toLowerCase().includes(busca)
+  );
+
+  if (!pecas.length) {
+    area.innerHTML = '<p class="empty">Nenhuma peça cadastrada para esta pesquisa.</p>';
+    return;
+  }
+
+  area.innerHTML = pecas.map(p => {
+    const marcada =
+      p.indisponivel || indisponiveisBusca.has(String(p.id));
+
+    return `
+      <label class="availability-item">
+        <input type="checkbox" data-indisponivel="${escapar(p.id)}"
+          ${marcada ? "checked" : ""}>
+        <span>
+          <strong>${escapar(nomeCategoria(p.categoria))} · ${formatar(p.medida)} cm</strong>
+          <small>${escapar(p.identificacao || "Sem identificação")} ·
+            ${marcada ? "Indisponível" : "Disponível"}</small>
+        </span>
+      </label>
+    `;
+  }).join("");
+
+  area.querySelectorAll("[data-indisponivel]").forEach(campo => {
+    campo.addEventListener("change", () => {
+      const id = String(campo.dataset.indisponivel);
+
+      if (campo.checked) indisponiveisBusca.add(id);
+      else indisponiveisBusca.delete(id);
+
+      const descricao = campo.closest(".availability-item").querySelector("small");
+      const peca = obterPecas("TODOS").find(p => String(p.id) === id);
+
+      descricao.textContent =
+        `${peca?.identificacao || "Sem identificação"} · ` +
+        `${campo.checked ? "Indisponível" : "Disponível"}`;
+    });
+  });
+}
+
+$("buscaIndisponivel")?.addEventListener("input", atualizarDisponibilidade);
+$("filtroIndisponivel")?.addEventListener("change", atualizarDisponibilidade);
+
+/* =========================================
+   MOTOR DE COMBINAÇÕES
+========================================= */
+
+function contarMedidasDiferentes(pecas) {
+  return new Set(pecas.map(p => Math.round(p.medida * 10000))).size;
+}
+
+function compararCombinacoes(a, b) {
+  const diferencaMedidas =
+    contarMedidasDiferentes(a.pecas) - contarMedidasDiferentes(b.pecas);
+
+  if (diferencaMedidas !== 0) return diferencaMedidas;
+  if (a.quantidade !== b.quantidade) return a.quantidade - b.quantidade;
+
+  return Math.abs(a.soma - a.alvo) - Math.abs(b.soma - b.alvo);
+}
+
+function encontrarCombinacoes(categoria, alvo, limite = 8, maxPecas = 8) {
+  if (!Number.isFinite(alvo) || alvo <= 0) return [];
+
+  const pecas = pecasDisponiveis(categoria)
+    .filter(p => p.medida > 0)
+    .sort((a, b) => a.medida - b.medida);
+
+  const resultados = [];
+  const selecionadas = [];
+  let visitas = 0;
+
+  const maxVisitas = 250000;
+  const alvoInteiro = Math.round(alvo * 10000);
+
+  const medidas = pecas.map(peca => ({
+    peca,
+    valor: Math.round(peca.medida * 10000)
+  }));
+
+  function buscar(inicio, somaInteira) {
+    visitas++;
+    if (visitas > maxVisitas) return;
+
+    if (selecionadas.length > 0 && somaInteira === alvoInteiro) {
+      const lista = [...selecionadas];
+
+      resultados.push({
+        pecas: lista,
+        soma: lista.reduce((total, p) => total + p.medida, 0),
+        quantidade: lista.length,
+        alvo
+      });
+
+      return;
     }
 
-    renderizarPecas();
-}
-
-/* CONFIGURAÇÕES */
-
-function atualizarResumoDados() {
-    const montagens = lerDados(CHAVE_MONTAGENS);
-    const pecas = lerDados(CHAVE_PECAS);
-
-    document.getElementById("resumoDados").textContent =
-        `${montagens.length} montagem(ns) e ${pecas.length} peça(s) cadastrada(s).`;
-}
-
-/* INICIALIZAÇÃO */
-
-document.getElementById("buscaHistorico").addEventListener("input", renderizarHistorico);
-
-atualizarCamposFacas();
-renderizarUltimasMontagens();
-renderizarHistorico();
-renderizarPecas();
-atualizarResumoDados();
-
-/* TEMA CLARO E ESCURO */
-
-function alterarTema(tema) {
-    const escuro = tema === "escuro";
-
-    document.body.classList.toggle("tema-escuro", escuro);
-
-    try {
-        localStorage.setItem("armco_tema", escuro ? "escuro" : "claro");
-    } catch (erro) {
-        console.warn("Não foi possível salvar a preferência de tema.");
+    if (somaInteira >= alvoInteiro || selecionadas.length >= maxPecas) {
+      return;
     }
 
-    atualizarBotoesTema();
+    for (let i = inicio; i < medidas.length; i++) {
+      if (visitas > maxVisitas) return;
+
+      const item = medidas[i];
+      if (somaInteira + item.valor > alvoInteiro) continue;
+
+      selecionadas.push(item.peca);
+      buscar(i + 1, somaInteira + item.valor);
+      selecionadas.pop();
+    }
+  }
+
+  buscar(0, 0);
+
+  const unicas = new Map();
+
+  resultados.forEach(opcao => {
+    const chave = opcao.pecas.map(p => String(p.id)).sort().join("|");
+    if (!unicas.has(chave)) unicas.set(chave, opcao);
+  });
+
+  return [...unicas.values()].sort(compararCombinacoes).slice(0, limite);
 }
 
-function atualizarBotoesTema() {
-    const escuro = document.body.classList.contains("tema-escuro");
-
-    const claro = document.getElementById("temaClaro");
-    const dark = document.getElementById("temaEscuro");
-
-    if (claro) {
-        claro.classList.toggle("selecionado", !escuro);
-        claro.setAttribute("aria-pressed", String(!escuro));
-    }
-
-    if (dark) {
-        dark.classList.toggle("selecionado", escuro);
-        dark.setAttribute("aria-pressed", String(escuro));
-    }
+function textoCombinacao(opcao) {
+  return opcao.pecas.map(p =>
+    `${formatar(p.medida)} cm` +
+    (p.identificacao ? ` (${p.identificacao})` : "")
+  ).join(" + ");
 }
 
-function carregarTema() {
-    let tema = "claro";
+function esconderEscolhaManualDeReducao() {
+  const campo = $("reducaoEscolhida");
+  if (!campo) return;
 
-    try {
-        tema = localStorage.getItem("armco_tema") || "claro";
-    } catch (erro) {
-        console.warn("Não foi possível recuperar a preferência de tema.");
-    }
+  const envoltorio = campo.closest(".field");
 
-    document.body.classList.toggle("tema-escuro", tema === "escuro");
-    atualizarBotoesTema();
+  if (envoltorio) {
+    envoltorio.hidden = true;
+  } else {
+    campo.hidden = true;
+  }
 }
 
-carregarTema();
+$("recalcular")?.addEventListener("click", gerarCombinacoes);
+
+/* =========================================
+   ESCOLHA AUTOMÁTICA DOS IMPULSORES
+========================================= */
+
+function escolherMelhorImpulsor() {
+  const candidatos = [];
+
+  gruposImpulsores.forEach(grupo => {
+    grupo.opcoes.forEach(opcao => {
+      candidatos.push({
+        grupo,
+        opcao,
+        pecas: opcao.pecas,
+        quantidade: opcao.quantidade,
+        soma: opcao.soma,
+        alvo: grupo.alvo,
+        reducao: grupo.reducao
+      });
+    });
+  });
+
+  candidatos.sort((a, b) => {
+    const prioridade = compararCombinacoes(a, b);
+    if (prioridade !== 0) return prioridade;
+    return a.reducao - b.reducao;
+  });
+
+  if (!candidatos.length) {
+    combinacaoImpulsorAutomatica = null;
+    reducaoAtual = null;
+    $("reducaoEscolhida").value = "";
+    $("impulsoresEscolhidos").value = "";
+    return null;
+  }
+
+  combinacaoImpulsorAutomatica = candidatos[0];
+  reducaoAtual = candidatos[0].reducao;
+
+  $("reducaoEscolhida").value = String(reducaoAtual);
+  $("impulsoresEscolhidos").value =
+    textoCombinacao(combinacaoImpulsorAutomatica.opcao);
+
+  return combinacaoImpulsorAutomatica;
+}
+
+/* =========================================
+   GERAR RESULTADOS
+========================================= */
+
+function gerarCombinacoes() {
+  if (!montagemAtual) return;
+
+  esconderEscolhaManualDeReducao();
+
+  const aneis = pecasDisponiveis("ANEL");
+
+  $("opcoesAneis").innerHTML = `
+    <div class="notice warning">
+      <strong>Medida-alvo dos anéis pendente.</strong>
+      A regra de produção da medida-alvo ainda precisa ser confirmada.
+      Não será presumida uma combinação incorreta.
+    </div>
+    <p class="muted">Anéis cadastrados e disponíveis: ${aneis.length}</p>
+  `;
+
+  gruposImpulsores = [0.10, 0.15, 0.20].map(reducao => {
+    const alvo = Math.round(
+      (montagemAtual.largura - reducao) * 10000
+    ) / 10000;
+
+    return {
+      reducao,
+      alvo,
+      opcoes: alvo > 0
+        ? encontrarCombinacoes("IMPULSOR", alvo, 30, 8)
+        : []
+    };
+  });
+
+  escolherMelhorImpulsor();
+  mostrarCombinacoesImpulsores();
+  atualizarMetricas();
+}
+
+function mostrarCombinacoesImpulsores() {
+  const area = $("opcoesImpulsores");
+  const disponiveis = pecasDisponiveis("IMPULSOR");
+
+  if (!disponiveis.length) {
+    area.innerHTML = '<p class="empty">Nenhum impulsor disponível no cadastro.</p>';
+    return;
+  }
+
+  const melhor = combinacaoImpulsorAutomatica;
+
+  if (!melhor) {
+    area.innerHTML = `
+      <div class="notice warning">
+        <strong>Nenhuma combinação exata encontrada.</strong>
+        O sistema testou largura − 0,10 cm, largura − 0,15 cm
+        e largura − 0,20 cm. Confira o cadastro e a disponibilidade.
+      </div>
+    `;
+    return;
+  }
+
+  let html = `
+    <div class="notice">
+      <strong>Melhor combinação selecionada automaticamente</strong>
+      <p>${escapar(textoCombinacao(melhor.opcao))}</p>
+      <p>
+        Alvo: ${formatar(melhor.alvo)} cm ·
+        ${melhor.quantidade} peça(s) ·
+        ${contarMedidasDiferentes(melhor.pecas)} medida(s) diferente(s)
+      </p>
+    </div>
+    <h3>Outras combinações encontradas</h3>
+  `;
+
+  gruposImpulsores.forEach(grupo => {
+    html += `
+      <div class="option-card">
+        <div class="option-title">
+          <strong>Alvo ${formatar(grupo.alvo)} cm</strong>
+          <span class="badge">Redução ${formatar(grupo.reducao)} cm</span>
+        </div>
+    `;
+
+    if (!grupo.opcoes.length) {
+      html += "<p>Nenhuma soma exata encontrada para este alvo.</p>";
+    } else {
+      html += grupo.opcoes.map(opcao => {
+        const selecionada =
+          grupo.reducao === melhor.reducao &&
+          opcao.pecas.map(p => String(p.id)).sort().join("|") ===
+          melhor.opcao.pecas.map(p => String(p.id)).sort().join("|");
+
+        return `
+          <div class="option-pieces">
+            ${selecionada ? "<strong>✓ Selecionada automaticamente:</strong> " : ""}
+            ${escapar(textoCombinacao(opcao))}
+            <p>
+              Soma: ${formatar(opcao.soma)} cm ·
+              ${opcao.quantidade} peça(s) ·
+              ${contarMedidasDiferentes(opcao.pecas)} medida(s) diferente(s)
+            </p>
+          </div>
+        `;
+      }).join("");
+    }
+
+    html += "</div>";
+  });
+
+  area.innerHTML = html;
+}
+
+/* =========================================
+   MÉTRICAS E CÁLCULOS
+========================================= */
+
+function obterMedidaNumericaFaca(valor) {
+  const medida = numero(valor);
+  return Number.isFinite(medida) && medida > 0 ? medida : null;
+}
+
+function atualizarMetricas() {
+  if (!montagemAtual) return;
+
+  const m = montagemAtual;
+
+  const alvoImpulsor = Number.isFinite(reducaoAtual)
+    ? Math.round((m.largura - reducaoAtual) * 10000) / 10000
+    : null;
+
+  const medidaFaca = obterMedidaNumericaFaca(m.facaSuperior);
+
+  const contraCorte = medidaFaca === null
+    ? null
+    : Math.round(
+        (m.largura - (2 * medidaFaca) - m.folga) * 10000
+      ) / 10000;
+
+  $("metricasResultado").innerHTML = `
+    <div class="metric">
+      <small>Largura solicitada</small>
+      <strong>${formatar(m.largura)} cm</strong>
+    </div>
+
+    <div class="metric">
+      <small>Folga calculada</small>
+      <strong>${formatar(m.folga)} cm</strong>
+    </div>
+
+    <div class="metric">
+      <small>Alvo do impulsor</small>
+      <strong>${alvoImpulsor === null
+        ? "Não encontrado"
+        : formatar(alvoImpulsor) + " cm"}</strong>
+      <div class="metric-note">Definido automaticamente pelo sistema.</div>
+    </div>
+
+    <div class="metric">
+      <small>Contra-corte</small>
+      <strong>${contraCorte === null
+        ? "Pendente"
+        : formatar(contraCorte) + " cm"}</strong>
+      <div class="metric-note">
+        ${contraCorte === null
+          ? "Informe a medida numérica da primeira faca para calcular."
+          : "Largura − (2 × faca) − folga."}
+      </div>
+    </div>
+
+    <div class="metric">
+      <small>Medida do anel</small>
+      <strong>${formatar(m.medidaAnel)} cm</strong>
+    </div>
+
+    <div class="metric">
+      <small>Canto calculado</small>
+      <strong>${formatar(m.cantoCalculado)} cm</strong>
+      <div class="metric-note">
+        Anel + metade da folga; com folga de 0,05 cm,
+        acrescenta-se mais 0,05 cm.
+      </div>
+    </div>
+  `;
+
+  $("alertaCalculos").textContent =
+    "O canto foi calculado usando a medida do anel informada. " +
+    "A combinação dos anéis continua pendente até a confirmação " +
+    "da medida-alvo de produção. Os impulsores são selecionados automaticamente.";
+}
+
+/* =========================================
+   VOLTAR E SALVAR
+========================================= */
+
+$("voltarEdicao")?.addEventListener("click", () => {
+  abrirPagina("inicio");
+  $("formSection")?.scrollIntoView({
+    behavior: "smooth",
+    block: "start"
+  });
+});
+
+$("confirmarMontagem")?.addEventListener("click", () => {
+  if (!montagemAtual) {
+    $("mensagemResultado").textContent = "Não há montagem para salvar.";
+    return;
+  }
+
+  const aneis = $("aneisEscolhidos").value.trim();
+  const impulsores = $("impulsoresEscolhidos").value.trim();
+
+  if (!aneis || !impulsores) {
+    $("mensagemResultado").textContent =
+      "Informe os anéis utilizados. Se não usou algum, escreva Nenhum.";
+    return;
+  }
+
+  const registro = {
+    ...montagemAtual,
+    aneisEscolhidos: aneis,
+    impulsoresEscolhidos: impulsores,
+    reducaoImpulsores: reducaoAtual,
+    observacaoResultado: $("observacaoResultado").value.trim(),
+    status: "Salva"
+  };
+
+  const historico = lerLista(CHAVES.montagens);
+  historico.unshift(registro);
+  salvarLista(CHAVES.montagens, historico);
+
+  montagemAtual = null;
+
+  atualizarHistorico();
+  atualizarUltimasMontagens();
+  abrirPagina("historico");
+});
+
+/* =========================================
+   HISTÓRICO
+========================================= */
+
+function dataLegivel(data) {
+  if (!data) return "Data não informada";
+
+  const dataObj = new Date(data);
+
+  return Number.isNaN(dataObj.getTime())
+    ? String(data)
+    : dataObj.toLocaleString("pt-BR");
+}
+
+function atualizarHistorico() {
+  const area = $("listaHistorico");
+  if (!area) return;
+
+  const busca = $("buscaHistorico").value.trim().toLowerCase();
+
+  const registros = lerLista(CHAVES.montagens).filter(registro =>
+    JSON.stringify(registro).toLowerCase().includes(busca)
+  );
+
+  if (!registros.length) {
+    area.innerHTML = '<p class="empty">Nenhuma montagem encontrada.</p>';
+    return;
+  }
+
+  area.innerHTML = registros.map(registro => {
+    const medidaAnel = registro.medidaAnel;
+    const cantoCalculado = registro.cantoCalculado ?? registro.canto;
+
+    return `
+      <article class="record-item">
+        <strong>${escapar(registro.cliente || "Montagem")}</strong>
+        <div class="record-meta">${escapar(dataLegivel(registro.data))}</div>
+        <div class="record-meta">
+          Largura: ${escapar(registro.largura)} cm ·
+          Espessura: ${escapar(registro.espessura)} cm ·
+          Folga: ${escapar(registro.folga)} cm
+        </div>
+        <div class="record-meta">Cabeçote: ${escapar(registro.cabecote || "—")}</div>
+
+        ${medidaAnel !== undefined
+          ? `<div class="record-meta">Medida do anel: ${escapar(medidaAnel)} cm</div>`
+          : ""}
+
+        <div class="record-meta">
+          Canto calculado: ${escapar(cantoCalculado ?? "—")} cm
+        </div>
+        <div class="record-meta">
+          Anéis: ${escapar(registro.aneisEscolhidos || registro.aneis || "—")}
+        </div>
+        <div class="record-meta">
+          Impulsores: ${escapar(registro.impulsoresEscolhidos || registro.impulsores || "—")}
+        </div>
+        <div class="record-meta">
+          Facas: ${escapar(registro.facaSuperior || "—")}
+          ${registro.facaInferior
+            ? " / segunda: " + escapar(registro.facaInferior)
+            : ""}
+        </div>
+
+        ${registro.observacoes
+          ? `<div class="record-meta">Observações: ${escapar(registro.observacoes)}</div>`
+          : ""}
+
+        ${registro.observacaoResultado
+          ? `<div class="record-meta">Escolha: ${escapar(registro.observacaoResultado)}</div>`
+          : ""}
+
+        <div class="record-actions">
+          <button class="small-btn danger"
+            data-excluir-registro="${escapar(registro.id)}">
+            Excluir registro
+          </button>
+        </div>
+      </article>
+    `;
+  }).join("");
+
+  area.querySelectorAll("[data-excluir-registro]").forEach(botao => {
+    botao.addEventListener("click", () => {
+      if (!confirm("Deseja excluir esta montagem do histórico?")) return;
+
+      const id = botao.dataset.excluirRegistro;
+
+      salvarLista(
+        CHAVES.montagens,
+        lerLista(CHAVES.montagens).filter(r => String(r.id) !== String(id))
+      );
+
+      atualizarHistorico();
+      atualizarUltimasMontagens();
+    });
+  });
+}
+
+$("buscaHistorico")?.addEventListener("input", atualizarHistorico);
+
+function atualizarUltimasMontagens() {
+  const area = $("ultimasMontagens");
+  if (!area) return;
+
+  const registros = lerLista(CHAVES.montagens).slice(0, 5);
+
+  if (!registros.length) {
+    area.innerHTML = '<p class="empty">Nenhuma montagem registrada ainda.</p>';
+    return;
+  }
+
+  area.innerHTML = registros.map(registro => `
+    <article class="record-item">
+      <strong>${escapar(registro.cliente || "Montagem")}</strong>
+      <div class="record-meta">${escapar(dataLegivel(registro.data))}</div>
+      <div class="record-meta">
+        ${escapar(registro.largura)} cm ·
+        ${escapar(registro.cabecote || "Cabeçote não informado")}
+      </div>
+      <div class="record-meta">
+        Canto: ${escapar(
+          registro.cantoCalculado ?? registro.canto ?? "—"
+        )} cm
+      </div>
+    </article>
+  `).join("");
+}
+
+/* =========================================
+   BACKUP JSON
+========================================= */
+
+$("exportarDados")?.addEventListener("click", () => {
+  const backup = {
+    exportadoEm: new Date().toISOString(),
+    montagens: lerLista(CHAVES.montagens),
+    pecas: lerLista(CHAVES.pecas),
+    tema: localStorage.getItem(CHAVES.tema) || "escuro"
+  };
+
+  const arquivo = new Blob(
+    [JSON.stringify(backup, null, 2)],
+    { type: "application/json" }
+  );
+
+  const url = URL.createObjectURL(arquivo);
+  const link = document.createElement("a");
+
+  link.href = url;
+  link.download = "backup-armco-montagem.json";
+
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+
+  URL.revokeObjectURL(url);
+
+  $("mensagemConfiguracoes").textContent =
+    "Backup exportado. Guarde o arquivo em local seguro.";
+});
+
+/* =========================================
+   INICIALIZAÇÃO
+========================================= */
+
+function iniciarSistema() {
+  if (!localStorage.getItem(CHAVES.montagens)) {
+    salvarLista(CHAVES.montagens, []);
+  }
+
+  if (!localStorage.getItem(CHAVES.pecas)) {
+    salvarLista(CHAVES.pecas, []);
+  }
+
+  aplicarTema();
+  atualizarRotuloCanto();
+  atualizarCampoSegundaFaca();
+  esconderEscolhaManualDeReducao();
+  atualizarHistorico();
+  atualizarUltimasMontagens();
+  atualizarFerramentais();
+}
+
+iniciarSistema();
