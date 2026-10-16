@@ -7,6 +7,27 @@ const CHAVES = {
   pecas: 'armco_pecas_v1',
   tema: 'armco_tema'
 };
+// Protege a inicialização em alguns visualizadores e prévias de arquivos no celular.
+// Quando o navegador bloqueia localStorage, as funções continuam disponíveis,
+// mas os dados ficam só nesta sessão e o operador é avisado visivelmente.
+let armazenamentoPersistente = true;
+const armazenamento = (() => {
+  try {
+    const store = window.localStorage;
+    const chaveTeste = '__armco_teste_armazenamento__';
+    store.setItem(chaveTeste, '1');
+    store.removeItem(chaveTeste);
+    return store;
+  } catch (erro) {
+    armazenamentoPersistente = false;
+    const memoria = new Map();
+    return {
+      getItem: chave => memoria.has(String(chave)) ? memoria.get(String(chave)) : null,
+      setItem: (chave, valor) => memoria.set(String(chave), String(valor)),
+      removeItem: chave => memoria.delete(String(chave))
+    };
+  }
+})();
 const $ = id => document.getElementById(id);
 const arred = n => Math.round((Number(n) + Number.EPSILON) * 10000) / 10000;
 const inteiro = n => Math.round(Number(n) * 10000);
@@ -25,10 +46,10 @@ const escapar = valor => String(valor ?? '').replace(/[&<>"']/g, x => ({
 const novoId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
 const nomeCategoria = c => ({ ANEL: 'Anel', IMPULSOR: 'Impulsor', FACA: 'Faca' }[c] || c);
 const lerLista = chave => {
-  try { const valor = JSON.parse(localStorage.getItem(chave) || '[]'); return Array.isArray(valor) ? valor : []; }
+  try { const valor = JSON.parse(armazenamento.getItem(chave) || '[]'); return Array.isArray(valor) ? valor : []; }
   catch { return []; }
 };
-const salvarLista = (chave, lista) => localStorage.setItem(chave, JSON.stringify(lista));
+const salvarLista = (chave, lista) => armazenamento.setItem(chave, JSON.stringify(lista));
 const normalizarPeca = p => ({
   ...p,
   id: String(p.id || novoId()),
@@ -78,14 +99,14 @@ function salvarPecas(pecas) {
 
 /* TEMA E NAVEGAÇÃO */
 function aplicarTema() {
-  const escuro = (localStorage.getItem(CHAVES.tema) || 'escuro') === 'escuro';
+  const escuro = (armazenamento.getItem(CHAVES.tema) || 'escuro') === 'escuro';
   document.body.classList.toggle('dark', escuro);
   const texto = escuro ? '☀️ Tema claro' : '🌑 Tema preto';
   if ($('themeToggle')) $('themeToggle').textContent = texto;
   if ($('themeToggleConfig')) $('themeToggleConfig').textContent = texto;
 }
 function alternarTema() {
-  localStorage.setItem(CHAVES.tema, document.body.classList.contains('dark') ? 'claro' : 'escuro');
+  armazenamento.setItem(CHAVES.tema, document.body.classList.contains('dark') ? 'claro' : 'escuro');
   aplicarTema();
 }
 $('themeToggle')?.addEventListener('click', alternarTema);
@@ -136,10 +157,21 @@ function atualizarListaFacas() {
   const medidas = [...new Set(pecasDisponiveis('FACA').map(p => inteiro(p.medida)))].sort((a,b) => a-b);
   $('listaMedidasFacas').innerHTML = medidas.map(v => `<option value="${formatar(v/10000)}"></option>`).join('');
 }
-function calcularCanto(medidaAnel, folga) {
-  return arred(medidaAnel + folga/2 + (igualdade(folga, .05) ? .05 : 0));
+function calcularCanto(medidaAnel, folga, cabecote) {
+  // Regra informada para o cabeçote grande com folga de 0,05 cm:
+  // 50,00 + 0,025 + 0,05 + 2,00 = 52,075 cm.
+  // Para outras folgas no cabeçote grande, +2,00 ainda precisa de confirmação.
+  const adicionalFolga = igualdade(folga, .05) ? .05 : 0;
+  const adicionalCabecoteGrande = cabecote === 'Grande' && igualdade(folga, .05) ? 2 : 0;
+  return arred(medidaAnel + folga/2 + adicionalFolga + adicionalCabecoteGrande);
 }
-const calcularInferior = (cima, folga, faca1) => arred(cima - folga/2 - 2*faca1);
+// Remover do canto superior TODO o ajuste usado por causa da folga.
+// Folga 0,05: (0,05 / 2) + 0,05 = 0,075 cm.
+// Exemplo cabeçote Grande: 52,075 - 0,075 = 52,00; menos 2 facas 5,00 = 42,00.
+const calcularInferior = (cima, folga, faca1) => {
+  const ajusteFolga = folga/2 + (igualdade(folga, .05) ? .05 : 0);
+  return arred(cima - ajusteFolga - 2*faca1);
+};
 const calcularContracorte = (largura, faca, folga) => arred(largura - 2*faca - folga);
 
 /* LARGURAS DINÂMICAS */
@@ -515,7 +547,7 @@ function lerMontagem() {
   const larguraTotalTiras=arred(largurasTiras.reduce((s,t)=>s+t.largura*t.quantidade,0));
   const totalTiras=largurasTiras.length ? largurasTiras.reduce((s,t)=>s+t.quantidade,0)
     : larguraRolo!==null ? Math.floor((larguraRolo*10000+0.0001)/(largura*10000)) : null;
-  const cantoSuperior=calcularCanto(anel,folga);
+  const cantoSuperior=calcularCanto(anel,folga,cabecote);
   const cantoInferior=calcularInferior(cantoSuperior,folga,faca1);
   return { id:novoId(),data:new Date().toISOString(),cliente,largura,larguraRolo,espessura,folga,
     tipoEtapa:$('tipoPedido').value,tipoPedido:$('tipoPedido').value,cabecote,
@@ -560,16 +592,34 @@ function mostrarResumo() {
     ['Folga utilizada',formatar(m.folga)+' cm'],['Cabeçote',m.cabecote],
     ['Faca(s) utilizadas',facaTexto],['Canto superior',formatar(m.cantoSuperior)+' cm'],
     ['Canto inferior',formatar(m.cantoInferior)+' cm'] ];
-  $('resultadoResumo').innerHTML=campos.map(([a,b])=>resumoCampo(a,b)).join('');
+  $('resultadoResumo').innerHTML=campos.map(([a,b])=>{
+    if(a!=='Canto superior') return resumoCampo(a,b);
+    const roxo=m.cabecote==='Grande' && igualdade(m.folga,.05)
+      ? '<span class="aviso-papel-roxo">Papel roxo junto no canto</span>' : '';
+    return `<div class="summary-cell summary-canto-superior">
+      <div class="canto-superior-cabecalho"><small>Canto superior</small>${roxo}</div>
+      <strong>${escapar(b)}</strong>
+    </div>`;
+  }).join('');
 }
 function atualizarCalculos() {
   const m=montagemAtual; if(!m)return;
-  const campos=[['Largura de corte',m.largura],['Faca 1',m.faca1],['Contra-corte 1',m.contracorte1]];
-  if(m.qtdFacas===2) campos.push(['Faca 2',m.faca2],['Contra-corte 2',m.contracorte2]);
-  $('metricasResultado').innerHTML=campos.map(([a,b])=>
-    `<div class="metric"><small>${escapar(a)}</small><strong>${formatar(b)} cm</strong></div>`).join('');
+  // Cada faca aparece imediatamente acima do seu próprio contra-corte.
+  // A mesma ordem é mantida em computadores e celulares para evitar troca de medidas.
+  const campoCalculo=(rotulo,valor,detalhe='')=>
+    `<div class="metric"><small>${escapar(rotulo)}</small><strong>${formatar(valor)} cm</strong>${detalhe?`<div class="metric-note">${escapar(detalhe)}</div>`:''}</div>`;
+  const parFaca=(n,faca,contracorte)=>`<section class="calculo-par" aria-label="Faca ${n} e contra-corte ${n}">
+    <h3>Faca ${n} e contra-corte ${n}</h3>
+    ${campoCalculo(`Faca ${n}`,faca)}
+    ${campoCalculo(`Contra-corte ${n}`,contracorte,
+      `${formatar(m.largura)} − (2 × ${formatar(faca)}) − ${formatar(m.folga)} = ${formatar(contracorte)} cm`)}
+  </section>`;
+  $('metricasResultado').classList.toggle('uma-faca',m.qtdFacas!==2);
+  $('metricasResultado').innerHTML=
+    `<div class="calculo-largura">${campoCalculo('Largura do corte',m.largura)}</div>
+     ${parFaca(1,m.faca1,m.contracorte1)}
+     ${m.qtdFacas===2?parFaca(2,m.faca2,m.contracorte2):''}`;
   const avisos=[];
-  if(m.cabecote==='Grande' && igualdade(m.folga,.05)) avisos.push('Papel roxo junto no canto.');
   if(m.cantoInferior<=0) avisos.push('Canto inferior não positivo: confira os valores antes de montar.');
   if(m.contracorte1<=0 || (m.qtdFacas===2&&m.contracorte2<=0)) avisos.push('Contra-corte não positivo: confira as facas.');
   const capacidade=m.cabecote==='Grande'?570:270;
@@ -671,7 +721,7 @@ $('buscaHistorico')?.addEventListener('input',atualizarHistorico);
 /* BACKUP / RESTAURAÇÃO */
 $('exportarDados')?.addEventListener('click',()=>{
   const backup={versao:2,exportadoEm:new Date().toISOString(),montagens:lerLista(CHAVES.montagens),
-    pecas:lerLista(CHAVES.pecas),tema:localStorage.getItem(CHAVES.tema)||'escuro'};
+    pecas:lerLista(CHAVES.pecas),tema:armazenamento.getItem(CHAVES.tema)||'escuro'};
   const blob=new Blob([JSON.stringify(backup,null,2)],{type:'application/json'});
   const url=URL.createObjectURL(blob), a=document.createElement('a');
   a.href=url;a.download='backup-armco-montagem.json';document.body.appendChild(a);a.click();a.remove();
@@ -690,7 +740,7 @@ $('importarArquivo')?.addEventListener('change',async evento=>{
     // Confirmar primeiro e alterar somente depois que a estrutura foi validada.
     salvarLista(CHAVES.montagens,dados.montagens);
     salvarLista(CHAVES.pecas,dados.pecas);
-    if(['claro','escuro'].includes(dados.tema))localStorage.setItem(CHAVES.tema,dados.tema);
+    if(['claro','escuro'].includes(dados.tema))armazenamento.setItem(CHAVES.tema,dados.tema);
     excluidosTemporarios.clear();
     aplicarTema(); atualizarFerramentais(); atualizarDisponibilidade(); atualizarListaFacas();
     atualizarHistorico(); atualizarUltimasMontagens();
@@ -702,12 +752,15 @@ $('importarArquivo')?.addEventListener('change',async evento=>{
 
 /* INICIALIZAÇÃO E COMPATIBILIDADE COM DADOS ANTIGOS */
 function iniciarSistema() {
-  if(!localStorage.getItem(CHAVES.montagens)) salvarLista(CHAVES.montagens,[]);
-  if(!localStorage.getItem(CHAVES.pecas)) salvarLista(CHAVES.pecas,[]);
+  if(!armazenamento.getItem(CHAVES.montagens)) salvarLista(CHAVES.montagens,[]);
+  if(!armazenamento.getItem(CHAVES.pecas)) salvarLista(CHAVES.pecas,[]);
   const pecas=lerLista(CHAVES.pecas);
   let alterou=false;
   pecas.forEach(p=>{if(!p.id){p.id=novoId();alterou=true;}});
   if(alterou)salvarLista(CHAVES.pecas,pecas);
+  if (!armazenamentoPersistente && $('avisoArmazenamento')) {
+    $('avisoArmazenamento').hidden = false;
+  }
   aplicarTema(); atualizarFolga(); atualizarCampoSegundaFaca(); iniciarTiras();
   atualizarQtdCadastro(); atualizarListaFacas(); atualizarFerramentais(); atualizarDisponibilidade();
   atualizarHistorico(); atualizarUltimasMontagens();
