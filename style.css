@@ -1303,3 +1303,22 @@ body:not(.dark) .summary-canto-superior .aviso-papel-roxo {
   #metricasResultado .linha-calculos-tira .metric strong { font-size:clamp(12px,3vw,17px); }
   #metricasResultado .calculo-coluna { gap:5px; }
 }
+
+/* Combinações separadas por corte e contra-corte; mantêm os painéis originais. */
+#listaDisponibilidade { max-height: 270px; overflow-y: auto; }
+#listaFerramentais { max-height: 450px; overflow-y: auto; padding-right: 4px; }
+.botao-exclusao { margin-left:auto; white-space:nowrap; min-height:36px; }
+.botao-exclusao.excluido { border-color:var(--vermelho); color:var(--vermelho); }
+.grupo-combinacao { border:1px solid var(--borda); border-radius:10px; padding:10px; margin-bottom:12px; min-width:0; }
+.cabecalho-combinacao { display:flex; justify-content:space-between; flex-wrap:wrap; gap:4px 8px; background:var(--painel-secundario); border-left:3px solid var(--azul); border-radius:5px; padding:9px; margin-bottom:10px; }
+.cabecalho-combinacao span { color:var(--texto-suave); font-weight:700; }
+.opcoes-grupo { display:grid; gap:8px; }
+.contra-lista { display:grid; gap:14px; }
+.bloco-contra { border:1px solid var(--borda); border-radius:10px; padding:12px; min-width:0; }
+.bloco-contra>h3 { color:var(--texto); background:var(--painel-secundario); border-left:4px solid var(--azul); padding:11px; border-radius:6px; margin:0 0 12px; }
+.grade-contra { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; }
+.grade-contra>div { min-width:0; }
+.grade-contra h4 { margin:0 0 8px; font-size:13px; }
+.grade-contra .opcoes-grupo { max-height:380px; overflow-y:auto; }
+#opcoesAneis,#opcoesImpulsores { max-height:630px; overflow-y:auto; }
+@media(max-width:760px) { .grade-contra { grid-template-columns:1fr; } .bloco-contra { padding:9px; } }
