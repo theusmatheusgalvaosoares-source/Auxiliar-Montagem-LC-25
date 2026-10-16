@@ -85,7 +85,7 @@ function pecasDisponiveis(categoria = 'TODOS', bloqueados = new Set()) {
     });
   return [...grupos.entries()].flatMap(([chave, pecas]) => {
     pecas.sort((a, b) => a.identificacao.localeCompare(b.identificacao));
-    const retirar = Math.min(pecas.length, excluidosTemporarios.get(chave) || 0);
+    const retirar = excluidosTemporarios.has(chave) ? pecas.length : 0;
     return pecas.slice(0, pecas.length - retirar);
   });
 }
@@ -306,224 +306,215 @@ function atualizarFerramentais() {
   }));
 }
 
-/* EXCLUSÃO TEMPORÁRIA PARA O CÁLCULO */
+/* EXCLUSÃO TEMPORÁRIA: X por medida, nunca por quantidade física */
 function atualizarDisponibilidade() {
-  const area = $('listaDisponibilidade'); if (!area) return;
-  const grupos = gruposPecas($('filtroIndisponivel').value, $('buscaIndisponivel').value.trim());
-  if (!grupos.length) { area.innerHTML = '<p class="empty">Nenhum ferramental encontrado.</p>'; return; }
-  area.innerHTML = grupos.map(([k,ps]) => {
-    const livres = ps.filter(p=>!p.indisponivel).length;
-    const bloqueados = Math.min(livres, excluidosTemporarios.get(k) || 0);
-    const ativo = livres-bloqueados;
-    return `<div class="availability-item"><span class="availability-description"><strong>${escapar(nomeCategoria(ps[0].categoria))} · ${formatar(ps[0].medida)} cm</strong>
-      <small>${ps.length} cadastrada(s) · ${ps.length-livres} bloqueada(s) no cadastro</small></span>
-      <div class="quantity-control"><button type="button" data-bloquear="${escapar(k)}" ${ativo===0?'disabled':''} aria-label="Diminuir disponíveis">−</button>
-      <output>${ativo} / ${livres}</output><button type="button" data-liberar="${escapar(k)}" ${bloqueados===0?'disabled':''} aria-label="Aumentar disponíveis">+</button></div>
-      </div>`;
-  }).join('');
-  area.querySelectorAll('[data-bloquear]').forEach(b => b.addEventListener('click', () => {
-    const k = b.dataset.bloquear;
-    excluidosTemporarios.set(k,(excluidosTemporarios.get(k)||0)+1);
-    atualizarDisponibilidade(); gerarCombinacoes();
-  }));
-  area.querySelectorAll('[data-liberar]').forEach(b => b.addEventListener('click', () => {
-    const k=b.dataset.liberar;
-    excluidosTemporarios.set(k,Math.max(0,(excluidosTemporarios.get(k)||0)-1));
+  const area=$('listaDisponibilidade'); if(!area) return;
+  const grupos=gruposPecas($('filtroIndisponivel').value,$('buscaIndisponivel').value.trim());
+  area.innerHTML=grupos.length?grupos.map(([k,ps])=>{
+    const excluido=excluidosTemporarios.has(k);
+    return `<div class="availability-item"><span class="availability-description"><strong>${escapar(nomeCategoria(ps[0].categoria))} · ${formatar(ps[0].medida)} cm</strong></span>
+      <button class="small-btn botao-exclusao ${excluido?'excluido':''}" type="button" data-alternar-x="${escapar(k)}" aria-pressed="${excluido}" aria-label="${excluido?'Voltar a usar':'Não utilizar'} ${escapar(nomeCategoria(ps[0].categoria))} ${formatar(ps[0].medida)}">${excluido?'↶ Voltar a usar':'× Não usar'}</button></div>`;
+  }).join(''):'<p class="empty">Nenhum ferramental encontrado.</p>';
+  area.querySelectorAll('[data-alternar-x]').forEach(b=>b.addEventListener('click',()=>{
+    const k=b.dataset.alternarX;
+    if(excluidosTemporarios.has(k)) excluidosTemporarios.delete(k); else excluidosTemporarios.set(k,true);
     atualizarDisponibilidade(); gerarCombinacoes();
   }));
 }
-$('buscaIndisponivel')?.addEventListener('input', atualizarDisponibilidade);
-$('filtroIndisponivel')?.addEventListener('change', atualizarDisponibilidade);
-$('recalcular')?.addEventListener('click', gerarCombinacoes);
+$('buscaIndisponivel')?.addEventListener('input',atualizarDisponibilidade);
+$('filtroIndisponivel')?.addEventListener('change',atualizarDisponibilidade);
+$('recalcular')?.addEventListener('click',gerarCombinacoes);
 
-/* MOTOR DE COMBINAÇÕES — estoque físico limitado e somas exatas */
-function contarMedidasDiferentes(lista) { return new Set(lista.map(p => inteiro(p.medida))).size; }
-function pontuacaoOpcao(opcao) {
-  return [opcao.pecas.filter(p=>p.ultimoCaso).length, opcao.pecas.length, contarMedidasDiferentes(opcao.pecas)];
+/* MOTOR: medidas independentes; quantidades não restringem SUGESTÕES */
+function contarMedidasDiferentes(lista) { return new Set(lista.map(p=>inteiro(p.medida))).size; }
+function pontuacaoOpcao(o) { return [o.pecas.filter(p=>p.ultimoCaso).length,o.pecas.length,contarMedidasDiferentes(o.pecas)]; }
+function compararOpcoes(a,b) {
+  const A=pontuacaoOpcao(a),B=pontuacaoOpcao(b);
+  for(let i=0;i<A.length;i++) if(A[i]!==B[i]) return A[i]-B[i];
+  return (a.reducao||0)-(b.reducao||0);
 }
-function compararOpcoes(a, b) {
-  const aP = pontuacaoOpcao(a), bP = pontuacaoOpcao(b);
-  for (let i = 0; i < aP.length; i++) if (aP[i] !== bP[i]) return aP[i]-bP[i];
-  return (a.reducao || 0) - (b.reducao || 0);
-}
-function enumerarCombinacoes(pecas, alvo, limite = 150) {
-  if (!Number.isFinite(alvo) || alvo <= 0 || !pecas.length) return {opcoes:[],limitado:false};
-  const grupos = new Map();
-  pecas.forEach(p => {
-    const k = inteiro(p.medida);
-    if (!grupos.has(k)) grupos.set(k, []);
-    grupos.get(k).push(p);
+function medidasParaBusca(categoria) {
+  const grupos=new Map();
+  obterPecas(categoria).forEach(p=>{
+    const chave=chaveGrupo(p);
+    if(excluidosTemporarios.has(chave))return;
+    const ant=grupos.get(chave);
+    if(!ant || (ant.ultimoCaso && !p.ultimoCaso)) grupos.set(chave,p);
   });
-  const itens = [...grupos.entries()].map(([valor, pecas]) => ({ valor, pecas })).sort((a,b)=>b.valor-a.valor);
-  const alvoInt = inteiro(alvo), maxVal=itens[0].valor, minVal=itens[itens.length-1].valor;
-  const qtdTotal = pecas.length;
-  const minimo = Math.max(1,Math.ceil(alvoInt/maxVal));
-  const maximo = Math.min(qtdTotal,Math.floor(alvoInt/minVal));
-  const resultados=[], escolhas=new Array(itens.length).fill(0);
-  let nos = 0, limitado = false;
-  const limiteNos = 900000;
-  function limitesRestantes(i, quantidade) {
-    let faltam = quantidade, maxSoma=0;
-    for(let j=i;j<itens.length && faltam>0;j++) {
-      const n = Math.min(faltam,itens[j].pecas.length);
-      maxSoma += n*itens[j].valor;
-      faltam -= n;
-    }
-    if (faltam>0) return null;
-    faltam=quantidade;
-    let minSoma=0;
-    for(let j=itens.length-1;j>=i && faltam>0;j--) {
-      const n=Math.min(faltam,itens[j].pecas.length);
-      minSoma += n*itens[j].valor;
-      faltam -= n;
-    }
-    return { minSoma, maxSoma };
-  }
-  function buscar(i, faltamPecas, faltamMedida) {
-    if (resultados.length>=limite) {limitado=true; return;}
-    if (++nos>limiteNos) {limitado=true; return;}
-    if (faltamPecas===0) {
-      if (faltamMedida===0) {
-        const lista=itens.flatMap((g,j)=>g.pecas.slice(0,escolhas[j]));
-        resultados.push({pecas:lista, soma:arred(alvo), alvo:arred(alvo), quantidade:lista.length});
+  return [...grupos.values()];
+}
+function enumerarCombinacoes(pecas,alvo,limite=48) {
+  if(!Number.isFinite(alvo)||alvo<=0||!pecas.length)return {opcoes:[],limitado:false};
+  const alvoInt=inteiro(alvo);
+  const itens=pecas.map(p=>({valor:inteiro(p.medida),p})).filter(x=>x.valor>0&&x.valor<=alvoInt).sort((a,b)=>b.valor-a.valor);
+  if(!itens.length)return {opcoes:[],limitado:false};
+  const minV=itens[itens.length-1].valor,maxV=itens[0].valor;
+  const minimo=Math.ceil(alvoInt/maxV);
+  // Sem limite físico por estoque; limite computacional evita travar no celular.
+  const maximo=Math.min(22,Math.floor(alvoInt/minV));
+  const escolhas=[];let visitados=0,limitado=false;
+  const resultados=[];
+  for(let qtd=minimo;qtd<=maximo;qtd++){
+    const coletados=[];
+    function dfs(i,pecasRestantes,medidaRestante){
+      if(resultados.length>=limite||visitados++>140000){limitado=true;return;}
+      if(!pecasRestantes){
+        if(!medidaRestante){
+          const lista=coletados.map(j=>itens[j].p);
+          resultados.push({pecas:lista,soma:arred(alvo),alvo:arred(alvo),quantidade:lista.length});
+        }
+        return;
       }
-      return;
+      if(i>=itens.length||medidaRestante<=0)return;
+      if(pecasRestantes*itens[i].valor<medidaRestante)return;
+      if(pecasRestantes*minV>medidaRestante)return;
+      const maxN=Math.min(pecasRestantes,Math.floor(medidaRestante/itens[i].valor));
+      for(let n=maxN;n>=0;n--){
+        for(let j=0;j<n;j++)coletados.push(i);
+        dfs(i+1,pecasRestantes-n,medidaRestante-n*itens[i].valor);
+        for(let j=0;j<n;j++)coletados.pop();
+        if(limitado)break;
+      }
     }
-    if(i>=itens.length || faltamMedida<=0) return;
-    const bounds = limitesRestantes(i, faltamPecas);
-    if(!bounds || faltamMedida<bounds.minSoma || faltamMedida>bounds.maxSoma) return;
-    const grupo=itens[i];
-    const maxN=Math.min(grupo.pecas.length,faltamPecas,Math.floor(faltamMedida/grupo.valor));
-    for(let n=maxN;n>=0;n--) {
-      escolhas[i]=n;
-      buscar(i+1,faltamPecas-n,faltamMedida-n*grupo.valor);
-      if(limitado) break;
-    }
-    escolhas[i]=0;
-  }
-  for (let quantidade=minimo; quantidade<=maximo; quantidade++) {
-    buscar(0,quantidade,alvoInt);
-    if (limitado) break;
+    dfs(0,qtd,alvoInt);
+    if(limitado)break;
   }
   resultados.sort(compararOpcoes);
-  return { opcoes:resultados, limitado };
+  return {opcoes:resultados,limitado};
 }
-function encontrarCombinacoes(categoria, alvo, bloqueados = new Set()) {
-  if (!Number.isFinite(alvo) || alvo<=0) return {opcoes:[],limitado:false};
-  const pecas = pecasDisponiveis(categoria,bloqueados);
-  if (categoria === 'ANEL') {
-    const preferenciais = pecas.filter(p=>!p.ultimoCaso);
-    const resultPreferencial = enumerarCombinacoes(preferenciais,alvo);
-    if (resultPreferencial.opcoes.length || resultPreferencial.limitado) return resultPreferencial;
+function encontrarCombinacoes(categoria,alvo){
+  const pecas=medidasParaBusca(categoria);
+  if(categoria==='ANEL'){
+    const preferenciais=enumerarCombinacoes(pecas.filter(p=>!p.ultimoCaso),alvo);
+    if(preferenciais.opcoes.length)return preferenciais;
   }
   return enumerarCombinacoes(pecas,alvo);
 }
-const textoCombinacao = op => op.pecas.map(p => `${formatar(p.medida)} cm`).join(' + ');
-const chaveOpcao = op => op?.pecas.map(p => String(p.id)).sort().join('|') || '';
-function cardOpcao(op, i, tipo, selecionada) {
-  return `<button class="option-card option-button ${selecionada?'recommended':''}" data-escolher="${tipo}" data-indice="${i}" type="button" aria-pressed="${selecionada}">
-    <div class="option-title"><strong>${selecionada?'✓ Escolhida · ':'Opção '+(i+1)+' · '}${op.pecas.length} peça(s)</strong>
-      ${op.reducao ? `<span class="badge">Redução ${formatar(op.reducao)} cm</span>` : ''}</div>
+const textoCombinacao=o=>o.pecas.map(p=>`${formatar(p.medida)} cm`).join(' + ');
+const chaveOpcao=o=>o?.pecas.map(p=>inteiro(p.medida)).sort((a,b)=>a-b).join('|')||'';
+const resultadosPorGrupo={cortes:[],contra:[]};
+const selecoesPorGrupo=new Map();
+let filtroReducaoContra='TODAS';
+function objetivosMontagem(){
+  if(!montagemAtual)return [];
+  const m=montagemAtual;
+  const larguras=m.largurasTiras.length?m.largurasTiras:[{largura:m.largura,quantidade:m.totalTiras}];
+  return larguras.map((t,i)=>({
+    nome:`Tira ${i+1}`,largura:t.largura,
+    cortes:[{id:`corte-${i}`,titulo:`Tira ${i+1} · Corte`,alvo:t.largura}],
+    contras:[
+      {id:`contra-${i}-1`,titulo:`Tira ${i+1} · Contra-corte 1`,alvo:calcularContracorte(t.largura,m.faca1,m.folga)},
+      ...(m.qtdFacas===2?[{id:`contra-${i}-2`,titulo:`Tira ${i+1} · Contra-corte 2`,alvo:calcularContracorte(t.largura,m.faca2,m.folga)}]:[])
+    ]
+  }));
+}
+function prepararGrupo(base){
+  const aneis=encontrarCombinacoes('ANEL',base.alvo);
+  const impulsores=[.10,.15,.20].flatMap(reducao=>{
+    const alvo=arred(base.alvo-reducao);
+    if(alvo<=0)return [];
+    return encontrarCombinacoes('IMPULSOR',alvo).opcoes.map(o=>({...o,reducao,alvo}));
+  }).sort(compararOpcoes);
+  return {...base,aneis:aneis.opcoes,impulsores,limitado:aneis.limitado};
+}
+function selecionadaGrupo(grupo,tipo,visiveis){
+  const chave=`${grupo.id}|${tipo}`;
+  const id=selecoesPorGrupo.get(chave);
+  return visiveis.find(o=>chaveOpcao(o)+(o.reducao||'')===id)||visiveis[0]||null;
+}
+function cardOpcao(op,i,identificador,selecionada){
+  return `<button class="option-card option-button ${selecionada?'recommended':''}" data-escolher-grupo="${escapar(identificador)}" data-indice="${i}" type="button" aria-pressed="${selecionada}">
+    <div class="option-title"><strong>${selecionada?'✓ Melhor opção · ':'Opção '+(i+1)+' · '}${op.pecas.length} peça(s)</strong>
+    ${op.reducao?`<span class="badge">Redução ${formatar(op.reducao)} cm</span>`:''}</div>
     <div class="option-pieces">${escapar(textoCombinacao(op))}</div>
-    <p>Soma: ${formatar(op.soma)} cm · ${contarMedidasDiferentes(op.pecas)} medida(s) diferente(s)${op.pecas.some(p=>p.ultimoCaso)?' · Último caso':''}</p>
-  </button>`;
+    <p>Soma: ${formatar(op.soma)} cm${op.pecas.some(p=>p.ultimoCaso)?' · Último caso':''}</p></button>`;
 }
-function renderizarOpcoesAneis(tipo) {
-  const topo=tipo==='topo', area = $(topo?'opcoesAneis':'opcoesAneisCantoInferior');
-  if (!area) return;
-  const lista = topo ? opcoesTopo : opcoesInferior;
-  const escolhida = topo ? selecionadaTopo : selecionadaInferior;
-  const limitado = topo ? opcoesTopo.limitado : opcoesInferior.limitado;
-  if(!lista.length) {
-    area.innerHTML = '<div class="notice warning">Nenhuma combinação exata encontrada com as peças disponíveis. Confira o estoque ou ajuste a indisponibilidade.</div>';
-    return;
+function desenharLista(grupos,tipo,filtro='TODAS'){
+  return grupos.map(grupo=>{
+    const lista=(tipo==='anel'?grupo.aneis:grupo.impulsores)
+      .filter(o=>tipo==='anel'||filtro==='TODAS'||igualdade(o.reducao,numero(filtro)));
+    const selecionada=selecionadaGrupo(grupo,tipo,lista);
+    const itens=lista.length?lista.slice(0,35).map((o,i)=>cardOpcao(o,i,`${grupo.id}|${tipo}`,chaveOpcao(o)+(o.reducao||'')===chaveOpcao(selecionada)+(selecionada?.reducao||''))).join(''):
+      '<div class="notice warning">Nenhuma combinação exata encontrada para esta medida.</div>';
+    return `<section class="grupo-combinacao" data-grupo="${escapar(grupo.id)}"><div class="cabecalho-combinacao"><strong>${escapar(grupo.titulo)}</strong><span>Soma: ${formatar(grupo.alvo)} cm</span></div>
+      <div class="opcoes-grupo">${itens}</div></section>`;
+  }).join('');
+}
+function ligarSelecoes(raiz,grupos,tipo,filtro){
+  raiz.querySelectorAll('[data-escolher-grupo]').forEach(b=>b.addEventListener('click',()=>{
+    const ident=b.dataset.escolherGrupo;
+    const grupo=grupos.find(g=>`${g.id}|${tipo}`===ident);if(!grupo)return;
+    const lista=(tipo==='anel'?grupo.aneis:grupo.impulsores).filter(o=>tipo==='anel'||filtro==='TODAS'||igualdade(o.reducao,numero(filtro)));
+    const op=lista[Number(b.dataset.indice)];if(!op)return;
+    selecoesPorGrupo.set(ident,chaveOpcao(op)+(op.reducao||''));
+    renderizarTodosGrupos();preencherEscolhas();
+  }));
+}
+function renderizarTodosGrupos(){
+  const areaA=$('opcoesAneis'),areaI=$('opcoesImpulsores'),areaC=$('opcoesContracortes');
+  if(areaA){areaA.innerHTML=desenharLista(resultadosPorGrupo.cortes,'anel');ligarSelecoes(areaA,resultadosPorGrupo.cortes,'anel','TODAS');}
+  if(areaI){areaI.innerHTML=desenharLista(resultadosPorGrupo.cortes,'impulsor',filtroReducao);ligarSelecoes(areaI,resultadosPorGrupo.cortes,'impulsor',filtroReducao);}
+  if(areaC){
+    areaC.innerHTML=resultadosPorGrupo.contra.map(g=>`<section class="bloco-contra"><h3>${escapar(g.titulo)} — ${formatar(g.alvo)} cm</h3>
+      <div class="grade-contra"><div><h4>Anéis</h4>${desenharLista([g],'anel')}</div><div><h4>Impulsores</h4>${desenharLista([g],'impulsor',filtroReducaoContra)}</div></div></section>`).join('');
+    ligarSelecoes(areaC,resultadosPorGrupo.contra,'anel','TODAS');ligarSelecoes(areaC,resultadosPorGrupo.contra,'impulsor',filtroReducaoContra);
   }
-  area.innerHTML = `${limitado?'<div class="notice warning">Muitas possibilidades: exibindo as primeiras opções. Prioridade para menos peças.</div>':''}
-    ${lista.map((op,i)=>cardOpcao(op,i,tipo,chaveOpcao(op)===chaveOpcao(escolhida))).join('')}`;
-  area.querySelectorAll('[data-escolher]').forEach(botao=>botao.addEventListener('click',()=>{
-    const op = lista[Number(botao.dataset.indice)];
-    if(topo) {
-      selecionadaTopo = op;
-      refazerInferior();
-      renderizarOpcoesAneis('topo');
-    } else {
-      selecionadaInferior=op;
-      renderizarOpcoesAneis('inferior');
-    }
-    preencherEscolhas();
+}
+function textoSelecoes(grupos,tipo){
+  return grupos.map(g=>{
+    const lista=tipo==='anel'?g.aneis:g.impulsores;
+    const o=selecionadaGrupo(g,tipo,lista);
+    return `${g.titulo} (${formatar(g.alvo)} cm): ${o?textoCombinacao(o)+(o.reducao?' · redução '+formatar(o.reducao)+' cm':''):'Sem combinação exata'}`;
+  }).join('\n');
+}
+function preencherEscolhas(){
+  const cortes=resultadosPorGrupo.cortes,contras=resultadosPorGrupo.contra;
+  const aneis=textoSelecoes(cortes,'anel'),impulsores=textoSelecoes(cortes,'impulsor');
+  if($('aneisEscolhidos'))$('aneisEscolhidos').value=aneis;
+  if($('impulsoresEscolhidos'))$('impulsoresEscolhidos').value=impulsores;
+  if($('aneisCantoInferiorEscolhidos'))$('aneisCantoInferiorEscolhidos').value=selecionadaInferior?textoCombinacao(selecionadaInferior):'';
+  if($('fichaAneis'))$('fichaAneis').textContent=aneis;
+  if($('fichaImpulsores'))$('fichaImpulsores').textContent=impulsores;
+  if($('fichaInferior'))$('fichaInferior').textContent=selecionadaInferior?textoCombinacao(selecionadaInferior):'Sem combinação exata';
+  if($('fichaContracortes'))$('fichaContracortes').textContent=textoSelecoes(contras,'anel')+' | '+textoSelecoes(contras,'impulsor');
+  const primeira=cortes[0];selecionadaTopo=primeira?selecionadaGrupo(primeira,'anel',primeira.aneis):null;
+  selecionadaImpulsor=primeira?selecionadaGrupo(primeira,'impulsor',primeira.impulsores):null;
+  if($('reducaoEscolhida'))$('reducaoEscolhida').value=selecionadaImpulsor?String(selecionadaImpulsor.reducao):'';
+}
+function renderizarOpcoesAneis(tipo){
+  if(tipo!=='inferior')return;
+  const area=$('opcoesAneisCantoInferior');if(!area)return;
+  const lista=opcoesInferior;
+  area.innerHTML=lista.length?lista.slice(0,35).map((o,i)=>cardOpcao(o,i,'inferior',chaveOpcao(o)===chaveOpcao(selecionadaInferior))).join(''):
+    '<div class="notice warning">Nenhuma combinação exata para o canto inferior.</div>';
+  area.querySelectorAll('[data-escolher-grupo]').forEach(b=>b.addEventListener('click',()=>{
+    selecionadaInferior=lista[Number(b.dataset.indice)];renderizarOpcoesAneis('inferior');preencherEscolhas();
   }));
 }
-function refazerInferior() {
-  const bloqueados = new Set((selecionadaTopo?.pecas||[]).map(p=>String(p.id)));
-  const resultado = encontrarCombinacoes('ANEL', montagemAtual.cantoInferior, bloqueados);
-  opcoesInferior = resultado.opcoes;
-  opcoesInferior.limitado = resultado.limitado;
-  selecionadaInferior = opcoesInferior[0] || null;
+function refazerInferior(){
+  // O operador confere a disponibilidade física: não subtrair peças usadas em outras sugestões.
+  const resultado=encontrarCombinacoes('ANEL',montagemAtual.cantoInferior);
+  opcoesInferior=resultado.opcoes;selecionadaInferior=opcoesInferior[0]||null;
   renderizarOpcoesAneis('inferior');
-  preencherEscolhas();
-}
-function preencherEscolhas() {
-  if($('aneisEscolhidos')) $('aneisEscolhidos').value = selecionadaTopo ? textoCombinacao(selecionadaTopo) : '';
-  if($('aneisCantoInferiorEscolhidos')) $('aneisCantoInferiorEscolhidos').value = selecionadaInferior ? textoCombinacao(selecionadaInferior) : '';
-  if($('impulsoresEscolhidos')) $('impulsoresEscolhidos').value = selecionadaImpulsor ? textoCombinacao(selecionadaImpulsor) : '';
-  if($('reducaoEscolhida')) $('reducaoEscolhida').value = selecionadaImpulsor ? String(selecionadaImpulsor.reducao) : '';
-  if($('fichaAneis')) $('fichaAneis').textContent = selecionadaTopo ? textoCombinacao(selecionadaTopo) : 'Nenhuma combinação exata';
-  if($('fichaInferior')) $('fichaInferior').textContent = selecionadaInferior ? textoCombinacao(selecionadaInferior) : 'Nenhuma combinação exata';
-  if($('fichaImpulsores')) $('fichaImpulsores').textContent = selecionadaImpulsor ? `${textoCombinacao(selecionadaImpulsor)} (redução ${formatar(selecionadaImpulsor.reducao)} cm)` : 'Nenhuma combinação exata';
-}
-function renderizarImpulsores() {
-  const area=$('opcoesImpulsores'); if(!area) return;
-  const lista = opcoesImpulsores.filter(op=>filtroReducao==='TODAS'||igualdade(op.reducao,numero(filtroReducao)));
-  const limitado = opcoesImpulsores.limitado;
-  if(!lista.length) { area.innerHTML='<div class="notice warning">Nenhuma combinação exata de impulsores encontrada para este filtro.</div>'; return; }
-  area.innerHTML=`${limitado?'<div class="notice warning">Há muitas opções: mostrando as primeiras combinações por quantidade de peças.</div>':''}
-    ${lista.map((op,i) => cardOpcao(op,i,'imp',chaveOpcao(op)===chaveOpcao(selecionadaImpulsor))).join('')}`;
-  area.querySelectorAll('[data-escolher]').forEach(botao => botao.addEventListener('click',()=>{
-    selecionadaImpulsor=lista[Number(botao.dataset.indice)];
-    renderizarImpulsores(); preencherEscolhas();
-  }));
 }
 document.querySelectorAll('[data-reducao]').forEach(b=>b.addEventListener('click',()=>{
   filtroReducao=b.dataset.reducao;
   document.querySelectorAll('[data-reducao]').forEach(item=>item.classList.toggle('selected',item===b));
-  renderizarImpulsores();
+  renderizarTodosGrupos();preencherEscolhas();
 }));
-function gerarCombinacoes() {
-  if(!montagemAtual) return;
-  const topo = encontrarCombinacoes('ANEL',montagemAtual.largura);
-  opcoesTopo=topo.opcoes; opcoesTopo.limitado=topo.limitado;
-  // O canto inferior e a largura principal utilizam anéis físicos distintos.
-  // Procurar um par viável antes de escolher automaticamente a opção do topo.
-  selecionadaTopo=opcoesTopo[0]||null;
-  let melhorPar=null;
-  for(const candidato of opcoesTopo.slice(0, 25)) {
-    const bloqueados=new Set(candidato.pecas.map(p=>String(p.id)));
-    const abaixo=encontrarCombinacoes('ANEL',montagemAtual.cantoInferior,bloqueados).opcoes[0];
-    if(!abaixo) continue;
-    const score=[candidato.pecas.filter(p=>p.ultimoCaso).length+abaixo.pecas.filter(p=>p.ultimoCaso).length,
-      candidato.pecas.length+abaixo.pecas.length,
-      contarMedidasDiferentes([...candidato.pecas,...abaixo.pecas])];
-    if(!melhorPar || score.some((v,i)=>v<melhorPar.score[i] && score.slice(0,i).every((x,j)=>x===melhorPar.score[j]))) {
-      melhorPar={topo:candidato,score};
-    }
-    if(score[0]===0 && score[1]===2) break;
-  }
-  if(melhorPar) selecionadaTopo=melhorPar.topo;
-  renderizarOpcoesAneis('topo');
-  refazerInferior();
-  opcoesImpulsores=[];
-  let limitadas = false;
-  for(const reducao of [.10,.15,.20]) {
-    const alvo=arred(montagemAtual.largura - reducao);
-    const achadas=encontrarCombinacoes('IMPULSOR',alvo);
-    if(achadas.limitado) limitadas=true;
-    opcoesImpulsores.push(...achadas.opcoes.map(o=>({...o,reducao,alvo})));
-  }
-  opcoesImpulsores.sort(compararOpcoes);
-  selecionadaImpulsor=opcoesImpulsores[0]||null;
-  opcoesImpulsores.limitado=limitadas;
-  renderizarImpulsores();
-  preencherEscolhas();
+document.querySelectorAll('[data-reducao-contra]').forEach(b=>b.addEventListener('click',()=>{
+  filtroReducaoContra=b.dataset.reducaoContra;
+  document.querySelectorAll('[data-reducao-contra]').forEach(item=>item.classList.toggle('selected',item===b));
+  renderizarTodosGrupos();preencherEscolhas();
+}));
+function gerarCombinacoes(){
+  if(!montagemAtual)return;
+  selecoesPorGrupo.clear();
+  const objetivos=objetivosMontagem();
+  // NUNCA transformar a soma das larguras em alvo de busca.
+  resultadosPorGrupo.cortes=objetivos.flatMap(t=>t.cortes).map(prepararGrupo);
+  resultadosPorGrupo.contra=objetivos.flatMap(t=>t.contras).filter(c=>c.alvo>0).map(prepararGrupo);
+  refazerInferior();renderizarTodosGrupos();preencherEscolhas();
 }
 
 /* DADOS DA MONTAGEM, RESUMO E CÁLCULOS */
@@ -569,6 +560,8 @@ $('formMontagem')?.addEventListener('submit',evento=>{
     montagemAtual=lerMontagem();
     excluidosTemporarios.clear();
     filtroReducao='TODAS';
+    filtroReducaoContra='TODAS';
+    document.querySelectorAll('[data-reducao-contra]').forEach(b=>b.classList.toggle('selected',b.dataset.reducaoContra==='TODAS'));
     document.querySelectorAll('[data-reducao]').forEach(b=>b.classList.toggle('selected',b.dataset.reducao==='TODAS'));
     $('mensagemMontagem').textContent='';
     $('mensagemResultado').textContent='';
@@ -662,6 +655,7 @@ $('confirmarMontagem')?.addEventListener('click',()=>{
     aneisCantoInferiorEscolhidos:$('aneisCantoInferiorEscolhidos').value.trim()||'Nenhuma combinação exata',
     impulsoresEscolhidos:$('impulsoresEscolhidos').value.trim()||'Nenhuma combinação exata',
     reducaoImpulsores:selecionadaImpulsor?.reducao ?? null,
+    combinacoesContracortes: $('fichaContracortes')?.textContent || '',
     idsAneis:selecionadaTopo?.pecas.map(p=>p.id)||[],
     idsAneisInferior:selecionadaInferior?.pecas.map(p=>p.id)||[],
     idsImpulsores:selecionadaImpulsor?.pecas.map(p=>p.id)||[],
@@ -691,6 +685,7 @@ function atualizarHistorico() {
     <div class="record-meta">Anéis (largura): ${escapar(m.aneisEscolhidos||m.aneis||'—')}</div>
     <div class="record-meta">Anéis (canto inferior): ${escapar(m.aneisCantoInferiorEscolhidos||'—')}</div>
     <div class="record-meta">Impulsores: ${escapar(m.impulsoresEscolhidos||m.impulsores||'—')}</div>
+    ${m.combinacoesContracortes?`<div class="record-meta">Contra-cortes: ${escapar(m.combinacoesContracortes)}</div>`:''}
     ${m.observacoes?`<div class="record-meta">Observações: ${escapar(m.observacoes)}</div>`:''}
     ${m.observacaoResultado?`<div class="record-meta">Escolha: ${escapar(m.observacaoResultado)}</div>`:''}
     <div class="record-actions"><button class="small-btn" data-reutilizar="${escapar(m.id||'')}" type="button">Reutilizar montagem</button>
@@ -782,3 +777,43 @@ function iniciarSistema() {
   atualizarHistorico(); atualizarUltimasMontagens();
 }
 iniciarSistema();
+
+/* ARMCO LC25 — Correção do total de tiras no resumo */
+
+function corrigirTotalTirasResumo() {
+  if (!montagemAtual) return;
+
+  const tiras = montagemAtual.largurasTiras;
+
+  if (!Array.isArray(tiras) || tiras.length === 0) return;
+
+  const total = tiras.reduce(
+    (soma, tira) => soma + Number(tira.quantidade || 0),
+    0
+  );
+
+  montagemAtual.totalTiras = total;
+
+  const campos = document.querySelectorAll(
+    "#resultadoResumo .summary-cell"
+  );
+
+  campos.forEach(campo => {
+    const titulo = campo.querySelector("small");
+    const valor = campo.querySelector("strong");
+
+    if (
+      titulo &&
+      valor &&
+      titulo.textContent.trim() === "Total de tiras"
+    ) {
+      valor.textContent = String(total);
+    }
+  });
+}
+
+document
+  .getElementById("formMontagem")
+  ?.addEventListener("submit", () => {
+    setTimeout(corrigirTotalTirasResumo, 0);
+  });
