@@ -1250,3 +1250,56 @@ body:not(.dark) .summary-canto-superior .aviso-papel-roxo {
     color: #4d176c !important;
   }
 }
+
+/* Resultados independentes para cada largura de tira */
+#metricasResultado.calculos-por-largura,
+#metricasResultado.calculos-por-largura.uma-faca {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+#metricasResultado .grupo-largura-calculo {
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid var(--borda);
+  border-radius: 12px;
+  background: var(--painel);
+}
+#metricasResultado .grupo-largura-calculo h3 { margin: 0 0 12px; font-size: 16px; }
+#metricasResultado .linha-calculos-tira {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+#metricasResultado .linha-calculos-tira .metric { min-width: 0; padding: 12px; }
+#metricasResultado .linha-calculos-tira .metric strong { font-size: clamp(17px, 2vw, 24px); overflow-wrap: anywhere; }
+#metricasResultado .linha-calculos-tira .metric-note { overflow-wrap: anywhere; }
+@media (max-width: 700px) {
+  #metricasResultado .linha-calculos-tira { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media print {
+  #metricasResultado.calculos-por-largura { display: flex; flex-direction: column; }
+  #metricasResultado .grupo-largura-calculo { break-inside: avoid; }
+}
+
+/* Layout dos cálculos: largura | facas | contra-cortes | total de tiras */
+#metricasResultado .linha-calculos-tira {
+  grid-template-columns: minmax(0,1.25fr) minmax(0,1fr) minmax(0,1fr) minmax(0,1.25fr);
+  align-items: stretch;
+}
+#metricasResultado .calculo-coluna { display:flex; flex-direction:column; gap:10px; min-width:0; }
+#metricasResultado .calculo-coluna > .metric { flex:1; }
+#metricasResultado .calculo-extremo { min-width:0; display:flex; }
+#metricasResultado .calculo-extremo > .metric {
+  flex:1; display:flex; flex-direction:column; justify-content:center;
+}
+@media (max-width: 700px) {
+  #metricasResultado .linha-calculos-tira {
+    grid-template-columns: minmax(0,1.1fr) minmax(0,1fr) minmax(0,1fr) minmax(0,1.1fr);
+    gap:5px;
+  }
+  #metricasResultado .linha-calculos-tira .metric { padding:7px 4px; }
+  #metricasResultado .linha-calculos-tira .metric small { font-size:10px; overflow-wrap:anywhere; }
+  #metricasResultado .linha-calculos-tira .metric strong { font-size:clamp(12px,3vw,17px); }
+  #metricasResultado .calculo-coluna { gap:5px; }
+}
