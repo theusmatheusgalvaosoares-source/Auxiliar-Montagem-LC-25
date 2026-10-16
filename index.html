@@ -233,14 +233,14 @@
         <section class="panel">
           <div class="section-heading">
             <div>
-              <h2>Disponibilidade dos ferramentais</h2>
-              <p>Ajuste quantas peças estão disponíveis somente para este cálculo.</p>
+              <h2>Ferramentais para esta busca</h2>
+              <p>Marque X nas medidas que não deseja utilizar nas combinações. Isso não altera o cadastro.</p>
             </div>
           </div>
 
           <div class="form-row">
             <div class="field">
-              <label for="buscaIndisponivel">Pesquisar por medida, identificação ou categoria</label>
+              <label for="buscaIndisponivel">Pesquisar por medida ou categoria</label>
               <input id="buscaIndisponivel" placeholder="Digite para pesquisar">
             </div>
             <div class="field">
@@ -262,8 +262,8 @@
           <section class="panel">
             <div class="section-heading">
               <div>
-                <h2>Combinações de anéis — largura solicitada</h2>
-                <p>Combinações que atingem exatamente a largura que será cortada.</p>
+                <h2>Combinações de anéis — corte</h2>
+                <p>Uma combinação separada para cada largura de corte.</p>
               </div>
             </div>
             <div class="option-list" id="opcoesAneis"></div>
@@ -277,7 +277,7 @@
             <div class="section-heading">
               <div>
                 <h2>Combinações de impulsores</h2>
-                <p>Seleção entre as reduções de 0,10 cm, 0,15 cm e 0,20 cm.</p>
+                <p>Combinações para cada corte, com reduções de 0,10 cm, 0,15 cm e 0,20 cm.</p>
               </div>
             </div>
             <div class="filter-chips" id="filtrosImpulsores" aria-label="Filtrar redução dos impulsores">
@@ -300,6 +300,21 @@
           </section>
         </div>
 
+        <!-- CONTRA-CORTES: grupos independentes por largura e faca -->
+        <section class="panel" id="painelContracortes">
+          <div class="section-heading"><div>
+            <h2>Combinações de contra-corte</h2>
+            <p>Anéis e impulsores para cada contra-corte, sem somar larguras diferentes.</p>
+          </div></div>
+          <div class="filter-chips" id="filtrosContraImpulsores" aria-label="Reduções dos impulsores de contra-corte">
+            <button class="chip selected" type="button" data-reducao-contra="TODAS">Todas</button>
+            <button class="chip" type="button" data-reducao-contra="0.10">0,10</button>
+            <button class="chip" type="button" data-reducao-contra="0.15">0,15</button>
+            <button class="chip" type="button" data-reducao-contra="0.20">0,20</button>
+          </div>
+          <div class="contra-lista" id="opcoesContracortes"></div>
+        </section>
+
         <!-- COMBINAÇÃO SEPARADA PARA O CANTO INFERIOR -->
         <section class="panel">
           <div class="section-heading">
@@ -320,6 +335,7 @@
           <p><strong>Anéis — largura:</strong> <span id="fichaAneis"></span></p>
           <p><strong>Anéis — canto inferior:</strong> <span id="fichaInferior"></span></p>
           <p><strong>Impulsores:</strong> <span id="fichaImpulsores"></span></p>
+          <p><strong>Contra-cortes:</strong> <span id="fichaContracortes"></span></p>
         </section>
 
         <section class="panel">
@@ -513,7 +529,7 @@
             <li>As combinações priorizam menos peças; depois menos medidas diferentes e, para os impulsores, menor redução.</li>
             <li>A combinação principal de anéis deve atingir exatamente a largura solicitada para o corte.</li>
             <li>A combinação de anéis para o canto de baixo é calculada separadamente, usando a medida do canto inferior.</li>
-            <li>Se não houver combinação exata entre os ferramentais disponíveis, o sistema deve informar que nenhuma combinação exata foi encontrada.</li>
+            <li>Se não houver combinação exata com as medidas cadastradas e não excluídas pelo operador, o sistema avisa.</li>
           </ul>
 
           <hr>
