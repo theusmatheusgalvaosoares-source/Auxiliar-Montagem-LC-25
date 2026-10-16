@@ -891,3 +891,271 @@ body:not(.dark) .option-card.recommended {
     width: 100%;
   }
 }
+
+/* =========================================
+   ARMCO LC25 — AJUSTES DA NOVA MONTAGEM
+   ========================================= */
+
+/* Bloco interno para larguras diferentes */
+.panel-inner {
+  margin: 18px 0;
+  padding: 16px;
+  border-color: #333333;
+  background: var(--painel-secundario);
+  box-shadow: none;
+}
+
+.panel-inner .section-heading {
+  margin-bottom: 12px;
+}
+
+.panel-inner h3 {
+  margin: 0 0 5px;
+  color: var(--texto);
+}
+
+.panel-inner .form-row {
+  gap: 12px;
+}
+
+.panel-inner .field {
+  margin-bottom: 12px;
+}
+
+/* Campos numéricos e de quantidade */
+input[type="number"] {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  margin: 0;
+  -webkit-appearance: none;
+}
+
+/* Melhor leitura das informações calculadas */
+.summary-cell,
+.metric,
+.option-card,
+.record-item,
+.availability-item {
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+
+/* Destaque das combinações selecionáveis */
+.option-card:has(input[type="radio"]:checked) {
+  border-color: var(--azul);
+  background: #202a31;
+  box-shadow: inset 0 0 0 1px #1688d455;
+}
+
+/* Mensagens e avisos */
+.notice:empty {
+  display: none;
+}
+
+/* Tema claro */
+body:not(.dark) .panel-inner {
+  border-color: #c8cdd2;
+  background: #f5f6f7;
+}
+
+body:not(.dark) .option-card:has(input[type="radio"]:checked) {
+  border-color: var(--azul);
+  background: #e8f4fc;
+}
+
+body:not(.dark) .panel-inner h3 {
+  color: #171717;
+}
+
+/* Celulares */
+@media (max-width: 760px) {
+  .panel-inner {
+    padding: 12px;
+  }
+
+  .panel-inner .form-row {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  .panel-inner .field {
+    margin-bottom: 12px;
+  }
+}
+
+/* ARMCO LC25 — atualização de montagem rápida */
+.hero, .hero h1, .hero .hero-mark { color: #f5faff; }
+.hero p { color: #dceaf4; }
+body:not(.dark) .hero, body:not(.dark) .hero h1 { color: #fff; }
+body:not(.dark) .hero .eyebrow { color: #b7e2ff; }
+body:not(.dark) .hero p { color: #e1eaf0; }
+body:not(.dark) .hero-mark { color: #ffffff38; }
+body:not(.dark) .eyebrow { color: #0965a2; }
+body:not(.dark) .category-card.selected { background: #e7f3fc; }
+body:not(.dark) .badge { background: #dcefff; color: #124c74; }
+body:not(.dark) th { background: #e6edf3; }
+body:not(.dark) .small-btn.danger { color: #a72121; }
+body:not(.dark) .panel-inner .field input { background: #fff; }
+body:not(.dark) .panel-inner .small-btn { background: #eef2f6; }
+
+.quantity-control { display: inline-flex; align-items: center; gap: 0; border: 1px solid var(--borda); border-radius: 9px; overflow: hidden; flex-shrink: 0; }
+.quantity-control button { min-width: 34px; height: 37px; padding: 0 8px; border: 0; color: var(--texto); background: var(--painel-secundario); font-size: 20px; font-weight: 800; }
+.quantity-control button:hover:not(:disabled) { color: #fff; background: var(--azul); }
+.quantity-control button:disabled { opacity: .35; cursor: not-allowed; }
+.quantity-control output { display: inline-block; min-width: 46px; padding: 8px 6px; text-align: center; font-weight: 800; color: var(--texto); background: var(--painel); white-space: nowrap; }
+body:not(.dark) .quantity-control button { background: #e7edf3; color: #172a3b; }
+body:not(.dark) .quantity-control output { background: #fff; color: #172a3b; }
+.tool-top { display: flex; align-items: center; justify-content: space-between; gap: 13px; }
+.preference-choice { margin: 12px 0; color: var(--texto-suave); cursor: pointer; }
+.tool-group .preference-choice { font-size: 12px; }
+.tool-group .record-meta { max-width: 660px; }
+.availability-description { flex: 1; min-width: 0; }
+.availability-item .quantity-control output { min-width: 67px; font-size: 12px; }
+.filter-chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 12px; }
+.chip { padding: 8px 12px; border: 1px solid var(--borda); border-radius: 999px; background: var(--painel); color: var(--texto); font-weight: 750; }
+.chip.selected, .chip:hover { background: var(--azul); border-color: var(--azul); color: #fff; }
+.option-button { width: 100%; display: block; background: var(--painel); color: var(--texto); text-align: left; cursor: pointer; }
+.option-button:hover { border-color: var(--azul); }
+.option-button:focus-visible { outline: 2px solid var(--azul); outline-offset: 2px; }
+.option-button.recommended { border-color: var(--azul); background: #1a2d3a; box-shadow: inset 3px 0 var(--azul); }
+body:not(.dark) .option-button { background: #fff; color: #182a35; }
+body:not(.dark) .option-button.recommended { background: #e5f3fc; }
+.tira-qtd-wrap { display: flex; align-items: center; gap: 6px; }
+.tira-qtd-wrap .remover-tira { min-width: 32px; align-self: stretch; font-size: 19px; }
+#largurasMontagem > .btn { width: 100%; }
+.import-label { cursor: pointer; }
+#resultadoResumo, #metricasResultado { align-items: stretch; }
+#alertaCalculos:empty { display: none; }
+#page-resultados .option-list { max-height: 630px; overflow-y: auto; padding-right: 4px; }
+#page-resultados .option-pieces { font-size: 14px; font-weight: 750; line-height: 1.6; }
+#page-resultados .option-card { padding: 12px; }
+#page-resultados .metrics-grid { grid-template-columns: repeat(auto-fit, minmax(175px, 1fr)); }
+@media (max-width: 620px) {
+  .tool-top { flex-wrap: wrap; }
+  .availability-item { flex-wrap: wrap; }
+  #page-resultados .metrics-grid { grid-template-columns: repeat(2, minmax(0,1fr)); }
+}
+@media print {
+  @page { size: A4; margin: 12mm; }
+  body { background: #fff !important; color: #111 !important; font-size: 10pt; }
+  .sidebar, .topbar, .overlay, .button-row, #page-resultados > .panel:nth-of-type(3),
+  #page-resultados .field, .filter-chips, #page-resultados .option-list, #page-resultados .page-heading p { display: none !important; }
+  .main-area { margin: 0; min-height: 0; }
+  .content { padding: 0; }
+  .page { display: none !important; }
+  #page-resultados { display: block !important; }
+  .panel { margin-bottom: 12px; padding: 8px; border-color: #ccc; background: #fff; box-shadow: none; page-break-inside: avoid; }
+  .panel h2, .page-heading h1 { color: #111; }
+  .summary-grid { grid-template-columns: repeat(3,1fr); gap: 5px; }
+  .summary-cell,.metric { color: #111; background: #fff; border-color: #ddd; padding: 6px; }
+  .summary-cell small,.metric small { color: #444; }
+  #metricasResultado { grid-template-columns: repeat(3,1fr); }
+  .notice { background: #fff; color: #111; }
+}
+
+.print-only { display: none; }
+@media print {
+  #fichaEscolhas.print-only { display: block !important; }
+  #fichaEscolhas p { margin: 7px 0; }
+}
+
+@media print {
+ #page-resultados > .dashboard-grid, #page-resultados > .panel:nth-of-type(4), #page-resultados > .panel:last-of-type {display:none !important;}
+}
+/* =========================================
+   ARMCO LC25 — CORREÇÃO DO TEMA BRANCO
+   ========================================= */
+
+body:not(.dark) {
+    --fundo: #f0f2f5;
+    --painel: #ffffff;
+    --painel-secundario: #f5f6f8;
+    --texto: #171717;
+    --texto-suave: #555555;
+    --borda: #404040;
+    --sombra: 0 3px 12px rgba(0, 0, 0, 0.08);
+}
+
+/* Bordas dos painéis e cartões */
+body:not(.dark) .panel,
+body:not(.dark) .panel-inner,
+body:not(.dark) .shortcut,
+body:not(.dark) .category-card,
+body:not(.dark) .record-item,
+body:not(.dark) .option-card,
+body:not(.dark) .availability-item,
+body:not(.dark) .summary-cell,
+body:not(.dark) .metric {
+    border: 1px solid #404040;
+}
+
+/* Campos de digitação e seleção */
+body:not(.dark) input:not([type="radio"]):not([type="checkbox"]),
+body:not(.dark) select,
+body:not(.dark) textarea {
+    background: #ffffff;
+    color: #111111;
+    border: 2px solid #404040;
+    border-radius: 8px;
+}
+
+/* Destaque ao clicar em um campo */
+body:not(.dark) input:focus,
+body:not(.dark) select:focus,
+body:not(.dark) textarea:focus {
+    border-color: #0872bd;
+    outline: 2px solid rgba(8, 114, 189, 0.2);
+}
+
+/* Botões secundários e filtros */
+body:not(.dark) .btn-secondary,
+body:not(.dark) .small-btn,
+body:not(.dark) .chip,
+body:not(.dark) .theme-toggle,
+body:not(.dark) .menu-toggle {
+    border: 1px solid #404040;
+    color: #171717;
+}
+
+/* Controle de quantidade + e - */
+body:not(.dark) .quantity-control {
+    border: 2px solid #404040;
+}
+
+/* Destaque das opções selecionadas */
+body:not(.dark) .category-card.selected,
+body:not(.dark) .option-card.recommended,
+body:not(.dark) .option-button.recommended,
+body:not(.dark) .chip.selected {
+    border: 2px solid #0872bd;
+}
+
+/* Melhor aparência dos cartões */
+body:not(.dark) .panel {
+    background: #ffffff;
+}
+
+body:not(.dark) .panel-inner {
+    background: #f5f6f8;
+}
+
+body:not(.dark) .record-item,
+body:not(.dark) .option-card,
+body:not(.dark) .availability-item {
+    background: #ffffff;
+}
+
+/* Tabelas */
+body:not(.dark) th,
+body:not(.dark) td {
+    border-bottom: 1px solid #555555;
+}
+
+/* Separadores */
+body:not(.dark) hr {
+    border-top: 1px solid #555555;
+}
