@@ -1066,96 +1066,187 @@ body:not(.dark) .option-button.recommended { background: #e5f3fc; }
 @media print {
  #page-resultados > .dashboard-grid, #page-resultados > .panel:nth-of-type(4), #page-resultados > .panel:last-of-type {display:none !important;}
 }
-/* =========================================
-   ARMCO LC25 — CORREÇÃO DO TEMA BRANCO
-   ========================================= */
 
+/* ARMCO LC25 — melhor leitura no tema claro e toque em celulares */
 body:not(.dark) {
-    --fundo: #f0f2f5;
-    --painel: #ffffff;
-    --painel-secundario: #f5f6f8;
-    --texto: #171717;
-    --texto-suave: #555555;
-    --borda: #404040;
-    --sombra: 0 3px 12px rgba(0, 0, 0, 0.08);
+  --fundo: #f1f3f5;
+  --painel: #fff;
+  --painel-secundario: #f6f7f9;
+  --texto: #141414;
+  --texto-suave: #444;
+  --borda: #444;
 }
-
-/* Bordas dos painéis e cartões */
 body:not(.dark) .panel,
 body:not(.dark) .panel-inner,
-body:not(.dark) .shortcut,
 body:not(.dark) .category-card,
 body:not(.dark) .record-item,
 body:not(.dark) .option-card,
 body:not(.dark) .availability-item,
 body:not(.dark) .summary-cell,
-body:not(.dark) .metric {
-    border: 1px solid #404040;
+body:not(.dark) .metric,
+body:not(.dark) .shortcut {
+  border-color: #4a4a4a;
 }
-
-/* Campos de digitação e seleção */
-body:not(.dark) input:not([type="radio"]):not([type="checkbox"]),
-body:not(.dark) select,
-body:not(.dark) textarea {
-    background: #ffffff;
-    color: #111111;
-    border: 2px solid #404040;
-    border-radius: 8px;
+body:not(.dark) .field input,
+body:not(.dark) .field select,
+body:not(.dark) .field textarea {
+  border: 2px solid #4a4a4a;
+  color: #141414;
+  background: #fff;
 }
-
-/* Destaque ao clicar em um campo */
-body:not(.dark) input:focus,
-body:not(.dark) select:focus,
-body:not(.dark) textarea:focus {
-    border-color: #0872bd;
-    outline: 2px solid rgba(8, 114, 189, 0.2);
+body:not(.dark) .field input:focus-visible,
+body:not(.dark) .field select:focus-visible,
+body:not(.dark) .field textarea:focus-visible {
+  border-color: #0872bd;
+  outline: 2px solid #0872bd55;
 }
-
-/* Botões secundários e filtros */
 body:not(.dark) .btn-secondary,
 body:not(.dark) .small-btn,
+body:not(.dark) .quantity-control,
 body:not(.dark) .chip,
 body:not(.dark) .theme-toggle,
-body:not(.dark) .menu-toggle {
-    border: 1px solid #404040;
-    color: #171717;
-}
-
-/* Controle de quantidade + e - */
-body:not(.dark) .quantity-control {
-    border: 2px solid #404040;
-}
-
-/* Destaque das opções selecionadas */
-body:not(.dark) .category-card.selected,
-body:not(.dark) .option-card.recommended,
+body:not(.dark) .menu-toggle { border-color: #444; }
 body:not(.dark) .option-button.recommended,
-body:not(.dark) .chip.selected {
-    border: 2px solid #0872bd;
+body:not(.dark) .category-card.selected,
+body:not(.dark) .chip.selected { border-color: #0872bd; }
+body:not(.dark) .option-card:has(input[type="radio"]:checked) { background: #e7f3fc; }
+/* Melhorar os controles de toque, sem alterar sua ação no JS. */
+@media (max-width: 760px) {
+  .btn, .small-btn, .chip, .category-card, .nav-item, .theme-toggle,
+  .menu-toggle, .quantity-control button { touch-action: manipulation; }
+  .quantity-control button { min-width: 44px; min-height: 44px; }
+  .small-btn { min-height: 40px; }
+  .chip { min-height: 42px; }
+  #menuToggle { position: relative; z-index: 21; }
 }
 
-/* Melhor aparência dos cartões */
-body:not(.dark) .panel {
-    background: #ffffff;
+/* ARMCO LC25 — leitura segura das facas e contra-cortes */
+#metricasResultado {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
+  max-width: 800px;
+}
+#metricasResultado .calculo-par {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 9px;
+  border: 1px solid var(--borda);
+  border-radius: 12px;
+  background: var(--painel-secundario);
+  padding: 12px;
+}
+#metricasResultado .calculo-par h3 {
+  margin: 0 0 1px;
+  font-size: 15px;
+}
+#metricasResultado .calculo-par .metric {
+  width: 100%;
+  background: var(--painel);
+}
+#metricasResultado .calculo-par .metric strong {
+  font-size: 21px;
+}
+#metricasResultado .calculo-par .metric-note {
+  margin-top: 7px;
 }
 
-body:not(.dark) .panel-inner {
-    background: #f5f6f8;
-}
 
-body:not(.dark) .record-item,
-body:not(.dark) .option-card,
-body:not(.dark) .availability-item {
-    background: #ffffff;
+/* ARMCO — 3 colunas no computador: largura | faca 1 | faca 2.
+   No telefone, tudo segue em coluna, sem separar faca do contra-corte. */
+#page-resultados #metricasResultado {
+  width: 100%;
+  max-width: none;
+  grid-template-columns: minmax(0, 1.16fr) repeat(2, minmax(0, 1fr));
+  align-items: stretch;
+  gap: 14px;
 }
-
-/* Tabelas */
-body:not(.dark) th,
-body:not(.dark) td {
-    border-bottom: 1px solid #555555;
+#metricasResultado.uma-faca {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
 }
-
-/* Separadores */
-body:not(.dark) hr {
-    border-top: 1px solid #555555;
+#metricasResultado .calculo-largura,
+#metricasResultado .calculo-par { min-width: 0; }
+#metricasResultado .calculo-largura .metric {
+  height: 100%;
+  min-height: 210px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 24px 20px;
+  border: 2px solid var(--azul);
+  background: var(--painel);
+}
+#metricasResultado .calculo-largura .metric small {
+  color: var(--texto);
+  font-weight: 800;
+  font-size: 15px;
+}
+#metricasResultado .calculo-largura .metric strong {
+  color: var(--texto);
+  font-size: clamp(27px, 2.5vw, 39px);
+  line-height: 1.2;
+  margin-top: 13px;
+}
+#metricasResultado .calculo-par {
+  grid-template-rows: auto minmax(0, 1fr) minmax(0, 1.35fr);
+  padding: 12px;
+}
+#metricasResultado .calculo-par .metric {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 74px;
+}
+#metricasResultado .calculo-par .metric strong { font-size: clamp(20px, 2vw, 27px); }
+#metricasResultado .calculo-par h3 { font-size: 15px; }
+.canto-superior-cabecalho {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+}
+.summary-canto-superior .aviso-papel-roxo {
+  display: inline-block;
+  padding: 4px 8px;
+  border: 1px solid #a86be4;
+  border-radius: 7px;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.25;
+  background: #49246d;
+  color: #fff;
+}
+body:not(.dark) .summary-canto-superior .aviso-papel-roxo {
+  background: #eee0ff;
+  color: #4d176c;
+  border-color: #8651b3;
+}
+@media (min-width: 701px) and (max-width: 1150px) {
+  #page-resultados #metricasResultado,
+  #page-resultados #metricasResultado.uma-faca {
+    grid-template-columns: repeat(2,minmax(0,1fr));
+  }
+  #metricasResultado .calculo-largura { grid-column: 1 / -1; }
+  #metricasResultado .calculo-largura .metric { min-height: 110px; }
+}
+@media (max-width: 700px) {
+  #page-resultados #metricasResultado,
+  #page-resultados #metricasResultado.uma-faca {
+    grid-template-columns: minmax(0,1fr);
+  }
+  #metricasResultado .calculo-largura .metric { min-height: 120px; }
+  #metricasResultado .calculo-par { grid-template-rows: auto auto auto; }
+}
+@media print {
+  #page-resultados #metricasResultado,
+  #page-resultados #metricasResultado.uma-faca {
+    grid-template-columns: repeat(3,minmax(0,1fr));
+    gap: 8px;
+  }
+  #metricasResultado .calculo-largura .metric { min-height: 125px; }
+  .summary-canto-superior .aviso-papel-roxo {
+    background: #fff !important;
+    color: #4d176c !important;
+  }
 }
