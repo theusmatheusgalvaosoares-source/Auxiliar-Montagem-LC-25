@@ -188,10 +188,12 @@ function criarLinhaTira(valores = {}) {
       <div class="tira-qtd-wrap"><input id="qtdTira${id}" class="qtd-tira" type="number" min="1" step="1" placeholder="Ex.: 1" value="${escapar(valores.quantidade ?? '')}">
       <button class="small-btn remover-tira" type="button" aria-label="Remover esta largura" title="Remover largura">×</button></div></div>`;
   $('linhasTiras').appendChild(linha);
+  linha.querySelectorAll('input').forEach(c => c.addEventListener('input', atualizarObrigatoriedadeLargura));
   linha.querySelector('.remover-tira').addEventListener('click', () => {
     if (document.querySelectorAll('.linha-tira').length <= 3) {
       linha.querySelectorAll('input').forEach(c => c.value = '');
     } else linha.remove();
+    atualizarObrigatoriedadeLargura();
   });
 }
 function iniciarTiras(valores = []) {
@@ -199,7 +201,13 @@ function iniciarTiras(valores = []) {
   numeroLinhasTiras = 0;
   const count = Math.max(3, valores.length);
   for (let i = 0; i < count; i++) criarLinhaTira(valores[i] || {});
+  atualizarObrigatoriedadeLargura();
 }
+function atualizarObrigatoriedadeLargura() {
+  const temTiras = [...document.querySelectorAll('.largura-tira')].some(c => c.value.trim());
+  $('largura').required = !temTiras;
+}
+
 $('adicionarLargura')?.addEventListener('click', () => criarLinhaTira());
 function lerTiras() {
   const resultado = [];
@@ -237,15 +245,10 @@ function proximaIdentificacao(categoria, pecas) {
 $('formFerramental')?.addEventListener('submit', evento => {
   evento.preventDefault();
   const medida = numero($('medidaFerramental').value);
-  const nome = $('nomeFerramental').value.trim();
   if (!Number.isFinite(medida) || medida <= 0) { $('mensagemFerramental').textContent = 'Digite uma medida maior que zero.'; return; }
   const pecas = lerLista(CHAVES.pecas);
-  if (quantidadeCadastro === 1 && nome && pecas.map(normalizarPeca).some(p => p.categoria === categoriaAtual && p.identificacao.toLowerCase() === nome.toLowerCase())) {
-    $('mensagemFerramental').textContent = 'Esta identificação já existe na categoria. Deixe em branco para gerar um código automático.';
-    return;
-  }
   for (let i=0; i<quantidadeCadastro; i++) {
-    const identificacao = quantidadeCadastro === 1 && nome ? nome : proximaIdentificacao(categoriaAtual,pecas);
+    const identificacao = proximaIdentificacao(categoriaAtual,pecas);
     pecas.push({ id:novoId(), categoria:categoriaAtual, medida:arred(medida), identificacao,
       ultimoCaso:$('ultimoCasoFerramental').checked, indisponivel:false, criadoEm:new Date().toISOString() });
   }
@@ -262,7 +265,7 @@ function gruposPecas(filtro, busca='') {
   const grupos = new Map();
   obterPecas(filtro).forEach(p => { const k = chaveGrupo(p); if (!grupos.has(k)) grupos.set(k, []); grupos.get(k).push(p); });
   return [...grupos.entries()]
-    .filter(([,ps]) => ps.some(p => `${nomeCategoria(p.categoria)} ${formatar(p.medida)} ${p.medida} ${p.identificacao}`.toLowerCase().includes(busca.toLowerCase())))
+    .filter(([,ps]) => ps.some(p => `${nomeCategoria(p.categoria)} ${formatar(p.medida)} ${p.medida}`.toLowerCase().includes(busca.toLowerCase())))
     .sort((a,b) => a[1][0].categoria.localeCompare(b[1][0].categoria) || a[1][0].medida-b[1][0].medida);
 }
 function atualizarFerramentais() {
@@ -271,10 +274,10 @@ function atualizarFerramentais() {
   if (!grupos.length) { area.innerHTML = '<p class="empty">Nenhum ferramental encontrado.</p>'; return; }
   area.innerHTML = grupos.map(([k,ps]) => {
     const p = ps[0], ultimo = ps.every(x => x.ultimoCaso);
-    const codigos = ps.map(x => `${x.identificacao || x.id.slice(-6)}${x.indisponivel ? ' (indisponível)' : ''}`).join(', ');
+    const indisponiveis = ps.filter(x => x.indisponivel).length;
     return `<article class="record-item tool-group">
       <div class="tool-top"><div><strong>${nomeCategoria(p.categoria)} · ${formatar(p.medida)} cm</strong>
-      <div class="record-meta">${escapar(codigos)}</div></div>
+      ${indisponiveis ? `<div class="record-meta">${indisponiveis} em uso ou indisponível(is)</div>` : ''}</div>
       <div class="quantity-control"><button data-menos="${escapar(k)}" type="button" aria-label="Remover uma peça">−</button>
       <output>${ps.length}</output><button data-mais="${escapar(k)}" type="button" aria-label="Adicionar uma peça">+</button></div></div>
       <label class="radio-label preference-choice"><input type="checkbox" data-preferencia="${escapar(k)}" ${ultimo?'checked':''}>
@@ -415,7 +418,7 @@ function encontrarCombinacoes(categoria, alvo, bloqueados = new Set()) {
   }
   return enumerarCombinacoes(pecas,alvo);
 }
-const textoCombinacao = op => op.pecas.map(p => `${formatar(p.medida)} cm${p.identificacao ? ` (${p.identificacao})` : ''}`).join(' + ');
+const textoCombinacao = op => op.pecas.map(p => `${formatar(p.medida)} cm`).join(' + ');
 const chaveOpcao = op => op?.pecas.map(p => String(p.id)).sort().join('|') || '';
 function cardOpcao(op, i, tipo, selecionada) {
   return `<button class="option-card option-button ${selecionada?'recommended':''}" data-escolher="${tipo}" data-indice="${i}" type="button" aria-pressed="${selecionada}">
@@ -526,7 +529,11 @@ function gerarCombinacoes() {
 /* DADOS DA MONTAGEM, RESUMO E CÁLCULOS */
 function lerMontagem() {
   const cliente=$('cliente').value.trim();
-  const largura=numero($('largura').value);
+  const larguraInformada=$('largura').value.trim() ? numero($('largura').value) : null;
+  const largurasTiras=lerTiras();
+  const larguraTotalTiras=arred(largurasTiras.reduce((s,t)=>s+t.largura*t.quantidade,0));
+  // Sem largura principal, a soma das tiras é usada para buscar os ferramentais.
+  const largura=larguraInformada===null ? larguraTotalTiras : larguraInformada;
   const larguraRolo=$('larguraRolo').value.trim() ? numero($('larguraRolo').value) : null;
   const espessura=numero($('espessura').value);
   const folga=obterFolga(espessura,$('folgaManual').value);
@@ -536,20 +543,18 @@ function lerMontagem() {
   const faca2=qtdFacas===2 ? numero($('facaInferior').value) : null;
   const anel=numero($('canto').value);
   if(!cliente) throw new Error('Informe o cliente ou etapa.');
-  if(!Number.isFinite(largura)||largura<=0) throw new Error('Informe uma largura solicitada válida.');
+  if(!Number.isFinite(largura)||largura<=0) throw new Error('Informe uma largura solicitada ou ao menos uma largura de tira válida.');
   if(larguraRolo!==null && (!Number.isFinite(larguraRolo)||larguraRolo<=0)) throw new Error('Informe a largura do rolo corretamente.');
   if(!Number.isFinite(espessura)||espessura<=0||folga===null) throw new Error('Espessura sem folga definida. Verifique a tabela ou selecione 0,30/0,35 para espessura 1,00.');
   if(!['Grande','Pequeno'].includes(cabecote)) throw new Error('Selecione o cabeçote.');
   if(!Number.isFinite(faca1)||faca1<=0) throw new Error('Informe a medida numérica da faca 1.');
   if(qtdFacas===2 && (!Number.isFinite(faca2)||faca2<=0)) throw new Error('Informe a medida numérica da faca 2.');
   if(!Number.isFinite(anel)||anel<=0) throw new Error('Informe a medida do anel para cálculo do canto.');
-  const largurasTiras=lerTiras();
-  const larguraTotalTiras=arred(largurasTiras.reduce((s,t)=>s+t.largura*t.quantidade,0));
   const totalTiras=largurasTiras.length ? largurasTiras.reduce((s,t)=>s+t.quantidade,0)
     : larguraRolo!==null ? Math.floor((larguraRolo*10000+0.0001)/(largura*10000)) : null;
   const cantoSuperior=calcularCanto(anel,folga,cabecote);
   const cantoInferior=calcularInferior(cantoSuperior,folga,faca1);
-  return { id:novoId(),data:new Date().toISOString(),cliente,largura,larguraRolo,espessura,folga,
+  return { id:novoId(),data:new Date().toISOString(),cliente,largura,larguraInformada,larguraRolo,espessura,folga,
     tipoEtapa:$('tipoPedido').value,tipoPedido:$('tipoPedido').value,cabecote,
     qtdFacas,facaSuperior:formatar(faca1),facaInferior:qtdFacas===2?formatar(faca2):'',faca1,faca2,
     medidaAnel:anel,canto:cantoSuperior,cantoCalculado:cantoSuperior,cantoSuperior,cantoInferior,
@@ -585,9 +590,9 @@ function mostrarResumo() {
     : `${formatar(m.largura)} cm`;
   const facaTexto = m.qtdFacas===2 ? `${formatar(m.faca1)} cm / ${formatar(m.faca2)} cm` : `${formatar(m.faca1)} cm`;
   const campos=[
-    ['Cliente',m.cliente],['Largura solicitada',formatar(m.largura)+' cm'],
+    ['Cliente',m.cliente],['Largura solicitada',m.larguraInformada===null?'Não informada (calculada pelas tiras)':formatar(m.largura)+' cm'],
     ['Largura do rolo recebido',m.larguraRolo===null?'Não informada':formatar(m.larguraRolo)+' cm'],
-    ['Tiras',larguraTiras],['Total de tiras cortadas',m.totalTiras===null?'Não informado':String(m.totalTiras)],
+    ['Total de tiras',m.larguraRolo===null?'Não informado':String(Math.floor((m.larguraRolo*10000+0.0001)/(m.largura*10000)))],
     ['Tipo de etapa',m.tipoEtapa],['Espessura',formatar(m.espessura)+' cm'],
     ['Folga utilizada',formatar(m.folga)+' cm'],['Cabeçote',m.cabecote],
     ['Faca(s) utilizadas',facaTexto],['Canto superior',formatar(m.cantoSuperior)+' cm'],
@@ -604,28 +609,39 @@ function mostrarResumo() {
 }
 function atualizarCalculos() {
   const m=montagemAtual; if(!m)return;
-  // Cada faca aparece imediatamente acima do seu próprio contra-corte.
-  // A mesma ordem é mantida em computadores e celulares para evitar troca de medidas.
-  const campoCalculo=(rotulo,valor,detalhe='')=>
-    `<div class="metric"><small>${escapar(rotulo)}</small><strong>${formatar(valor)} cm</strong>${detalhe?`<div class="metric-note">${escapar(detalhe)}</div>`:''}</div>`;
-  const parFaca=(n,faca,contracorte)=>`<section class="calculo-par" aria-label="Faca ${n} e contra-corte ${n}">
-    <h3>Faca ${n} e contra-corte ${n}</h3>
-    ${campoCalculo(`Faca ${n}`,faca)}
-    ${campoCalculo(`Contra-corte ${n}`,contracorte,
-      `${formatar(m.largura)} − (2 × ${formatar(faca)}) − ${formatar(m.folga)} = ${formatar(contracorte)} cm`)}
-  </section>`;
+  // Exibir somente medidas finais; sem fórmulas nos cartões.
+  const campoCalculo=(rotulo,valor,unidade=' cm')=>
+    `<div class="metric"><small>${escapar(rotulo)}</small><strong>${formatar(valor)}${unidade}</strong></div>`;
+  const tiras=m.largurasTiras.length ? m.largurasTiras : [{largura:m.largura,quantidade:m.totalTiras??null}];
+  const resultados=tiras.map(t=>({
+    ...t,cc1:calcularContracorte(t.largura,m.faca1,m.folga),
+    cc2:m.qtdFacas===2?calcularContracorte(t.largura,m.faca2,m.folga):null
+  }));
+  $('metricasResultado').classList.add('calculos-por-largura');
   $('metricasResultado').classList.toggle('uma-faca',m.qtdFacas!==2);
-  $('metricasResultado').innerHTML=
-    `<div class="calculo-largura">${campoCalculo('Largura do corte',m.largura)}</div>
-     ${parFaca(1,m.faca1,m.contracorte1)}
-     ${m.qtdFacas===2?parFaca(2,m.faca2,m.contracorte2):''}`;
+  $('metricasResultado').innerHTML=resultados.map((t,i)=>`
+    <section class="grupo-largura-calculo" aria-label="Cálculos da tira ${i+1}">
+      <h3>Tira ${i+1}</h3>
+      <div class="linha-calculos-tira">
+        <div class="calculo-extremo">${campoCalculo('Largura',t.largura)}</div>
+        <div class="calculo-coluna">
+          ${campoCalculo('Faca 1',m.faca1)}
+          ${m.qtdFacas===2?campoCalculo('Faca 2',m.faca2):''}
+        </div>
+        <div class="calculo-coluna">
+          ${campoCalculo('Contra-corte 1',t.cc1)}
+          ${m.qtdFacas===2?campoCalculo('Contra-corte 2',t.cc2):''}
+        </div>
+        <div class="calculo-extremo">${t.quantidade===null?'<div class="metric"><small>Total de tiras</small><strong>Não informado</strong></div>':campoCalculo('Total de tiras',t.quantidade,'')}</div>
+      </div>
+    </section>`).join('');
   const avisos=[];
   if(m.cantoInferior<=0) avisos.push('Canto inferior não positivo: confira os valores antes de montar.');
-  if(m.contracorte1<=0 || (m.qtdFacas===2&&m.contracorte2<=0)) avisos.push('Contra-corte não positivo: confira as facas.');
+  if(resultados.some(t=>t.cc1<=0 || (m.qtdFacas===2&&t.cc2<=0))) avisos.push('Contra-corte não positivo em uma ou mais larguras: confira as facas.');
   const capacidade=m.cabecote==='Grande'?570:270;
   if(m.largura>capacidade+0.000001) avisos.push(`Largura solicitada maior que a capacidade do cabeçote (${capacidade} cm).`);
   if(m.largurasTiras.length && m.larguraTotalTiras>capacidade+0.000001) avisos.push('Soma das larguras diferentes excede a capacidade do cabeçote.');
-  if(m.largurasTiras.length && !igualdade(m.largura,m.larguraTotalTiras)) avisos.push(`As larguras diferentes somam ${formatar(m.larguraTotalTiras)} cm, diferente da largura solicitada de ${formatar(m.largura)} cm. Confira.`);
+  if(m.largurasTiras.length && m.larguraInformada!==null && !igualdade(m.largura,m.larguraTotalTiras)) avisos.push(`As larguras diferentes somam ${formatar(m.larguraTotalTiras)} cm, diferente da largura solicitada de ${formatar(m.largura)} cm. Confira.`);
   if(m.larguraRolo!==null && m.largurasTiras.length && m.larguraTotalTiras>m.larguraRolo+0.000001) avisos.push('As tiras informadas excedem a largura do rolo recebido.');
   for(const medida of [m.faca1,...(m.qtdFacas===2?[m.faca2]:[])]) {
     const cadastradas=obterPecas('FACA').filter(p=>igualdade(p.medida,medida));
@@ -684,7 +700,7 @@ function atualizarHistorico() {
     const m=lerLista(CHAVES.montagens).find(x=>String(x.id)===b.dataset.reutilizar);
     if(!m)return;
     $('cliente').value=m.cliente||'';
-    $('largura').value=m.largura??'';
+    $('largura').value=m.larguraInformada===null?'':(m.largura??'');
     $('larguraRolo').value=m.larguraRolo??'';
     $('espessura').value=m.espessura??'';
     atualizarFolga();
