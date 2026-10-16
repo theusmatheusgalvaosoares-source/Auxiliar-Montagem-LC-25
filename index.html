@@ -7,7 +7,7 @@
   <meta name="theme-color" content="#111111">
   <title>ARMCO MONTAGEM LC25</title>
   <link rel="stylesheet" href="style.css">
-  <script src="script.js" defer></script>
+  <script src="script.js" defer onerror="document.getElementById('avisoScript').hidden=false"></script>
 </head>
 <body class="dark">
 
@@ -46,6 +46,9 @@
     </header>
 
     <div class="content">
+      <noscript><div class="notice warning" role="alert">O JavaScript está desativado neste visualizador. Abra o ARMCO no navegador para utilizar os botões.</div></noscript>
+      <div class="notice warning" id="avisoScript" hidden role="alert">O arquivo script.js não foi carregado. Extraia o ZIP completo ou use o arquivo ARMCO_CELULAR_ARQUIVO_UNICO.html.</div>
+      <div class="notice warning" id="avisoArmazenamento" hidden role="alert">Este visualizador bloqueou o armazenamento local. O ARMCO pode calcular, mas os ferramentais e o histórico NÃO serão guardados depois que você fechar a página. Para salvar, abra o sistema por um endereço HTTPS (ex.: GitHub Pages).</div>
 
       <!-- INÍCIO -->
       <section class="page active" id="page-inicio">
@@ -480,12 +483,13 @@
 
           <h2>3. Canto de cima e canto de baixo</h2>
           <p><strong>Canto de cima:</strong> medida do anel + metade da folga.</p>
-          <p><strong>Fórmula:</strong> canto de cima = anel + (folga ÷ 2). Se a folga for 0,05 cm, acrescentar mais 0,05 cm ao resultado.</p>
-          <p><strong>Canto de baixo:</strong> canto de cima − metade da folga − (2 × medida da primeira faca).</p>
+          <p><strong>Fórmula:</strong> canto de cima = anel + (folga ÷ 2). Se a folga for 0,05 cm, acrescentar mais 0,05 cm ao resultado. No cabeçote grande, com folga de 0,05 cm, acrescentar também 2,00 cm.</p>
+          <p><strong>Canto de baixo:</strong> canto de cima − todos os acréscimos da folga − (2 × medida da primeira faca). Com folga de 0,05 cm, retirar 0,075 cm inteiros (0,025 + 0,05).</p>
           <p>Exemplo: anel de 52,00 cm, folga de 0,15 cm e primeira faca de 3,90 cm.</p>
           <ul class="manual-list">
             <li>Canto de cima = 52,00 + 0,075 = 52,075 cm.</li>
             <li>Canto de baixo = 52,075 − 0,075 − (2 × 3,90) = 44,20 cm.</li>
+            <li>Cabeçote grande com anel 50,00, folga 0,05 e Faca 1 de 5,00: canto de cima 52,075; canto de baixo = 52,075 − 0,075 − (2 × 5,00) = 42,00 cm.</li>
           </ul>
           <p>Para cabeçote grande com folga de 0,05 cm, exibir o aviso: <strong>“Papel roxo junto no canto”.</strong></p>
 
