@@ -93,13 +93,18 @@
 
               <div class="form-row">
                 <div class="field">
-                  <label for="largura">Largura solicitada (cm)</label>
+                  <label for="largura">Largura solicitada para corte (cm)</label>
                   <input id="largura" name="largura" type="text" inputmode="decimal" required placeholder="Ex.: 100,00">
                 </div>
                 <div class="field">
-                  <label for="espessura">Espessura do material (cm)</label>
-                  <input id="espessura" name="espessura" type="text" inputmode="decimal" required placeholder="Ex.: 0,50">
+                  <label for="larguraRolo">Largura do rolo recebido da etapa anterior (cm)</label>
+                  <input id="larguraRolo" name="larguraRolo" type="text" inputmode="decimal" placeholder="Ex.: 300,00">
                 </div>
+              </div>
+
+              <div class="field">
+                <label for="espessura">Espessura do material (cm)</label>
+                <input id="espessura" name="espessura" type="text" inputmode="decimal" required placeholder="Ex.: 0,50">
               </div>
 
               <div class="field" id="wrapFolgaManual" hidden>
@@ -113,23 +118,32 @@
 
               <div class="form-row">
                 <div class="field">
-                  <label for="tipoPedido">Tipo de pedido</label>
+                  <label for="tipoPedido">Tipo de etapa</label>
                   <select id="tipoPedido" name="tipoPedido">
-                    <option value="Produção">Produção</option>
-                    <option value="Teste">Teste</option>
-                    <option value="Retrabalho">Retrabalho</option>
-                    <option value="Outro">Outro</option>
+                    <option value="Etapa Final">Etapa Final</option>
+                    <option value="Etapa Intermediária">Etapa Intermediária</option>
                   </select>
                 </div>
                 <div class="field">
                   <label for="cabecote">Cabeçote</label>
                   <select id="cabecote" name="cabecote" required>
                     <option value="">Selecione</option>
-                    <option value="Grande">Grande</option>
-                    <option value="Pequeno">Pequeno</option>
+                    <option value="Grande">Grande — capacidade 570 cm</option>
+                    <option value="Pequeno">Pequeno — capacidade 270 cm</option>
                   </select>
                 </div>
               </div>
+
+              <section class="panel panel-inner" id="largurasMontagem">
+                <div class="section-heading">
+                  <div>
+                    <h3>Larguras da montagem</h3>
+                    <p>Opcional, use quando a montagem tiver tiras de larguras diferentes</p>
+                  </div>
+                </div>
+                <div id="linhasTiras"></div>
+                <button class="btn btn-secondary" id="adicionarLargura" type="button">+ Adicionar largura</button>
+              </section>
 
               <fieldset class="fieldset">
                 <legend>Quantidade de facas</legend>
@@ -144,19 +158,21 @@
               </fieldset>
 
               <div class="field">
-                <label for="facaSuperior">Primeira faca / medida ou identificação</label>
-                <input id="facaSuperior" name="facaSuperior" required placeholder="Informe a medida ou identificação">
+                <label for="facaSuperior">Faca 1 (cm)</label>
+                <input id="facaSuperior" name="facaSuperior" inputmode="decimal" list="listaMedidasFacas" required placeholder="Ex.: 3,90">
               </div>
 
               <div class="field" id="wrapFacaInferior" hidden>
-                <label for="facaInferior">Segunda faca (opcional)</label>
-                <input id="facaInferior" name="facaInferior" placeholder="Informe a segunda faca, se houver">
+                <label for="facaInferior">Faca 2 (cm)</label>
+                <input id="facaInferior" name="facaInferior" inputmode="decimal" list="listaMedidasFacas" placeholder="Ex.: 3,90">
               </div>
+
+              <datalist id="listaMedidasFacas"></datalist>
 
               <div class="field">
                 <label for="canto">Medida do anel para cálculo do canto (cm)</label>
-                <input id="canto" name="canto" type="text" inputmode="decimal" required placeholder="Ex.: 10,00">
-                <small class="muted">Informe a medida do anel que será utilizado. O canto será calculado automaticamente.</small>
+                <input id="canto" name="canto" type="text" inputmode="decimal" required placeholder="Ex.: 52,00">
+                <small class="muted">Informe a medida do anel que será utilizado. O canto de cima será calculado automaticamente.</small>
               </div>
 
               <div class="field">
@@ -194,7 +210,7 @@
           <div class="section-heading">
             <div>
               <h2>Resumo da montagem</h2>
-              <p>Dados informados e canto calculado.</p>
+              <p>Dados informados, aproveitamento do rolo e canto calculado.</p>
             </div>
           </div>
           <div class="summary-grid" id="resultadoResumo"></div>
@@ -204,7 +220,7 @@
           <div class="section-heading">
             <div>
               <h2>Cálculos</h2>
-              <p>Valores calculados com as regras atualmente confirmadas.</p>
+              <p>Valores calculados com as regras confirmadas.</p>
             </div>
           </div>
           <div class="metrics-grid" id="metricasResultado"></div>
@@ -215,7 +231,7 @@
           <div class="section-heading">
             <div>
               <h2>Disponibilidade dos ferramentais</h2>
-              <p>Marque temporariamente as peças que não podem ser usadas nesta montagem.</p>
+              <p>Ajuste quantas peças estão disponíveis somente para este cálculo.</p>
             </div>
           </div>
 
@@ -243,14 +259,14 @@
           <section class="panel">
             <div class="section-heading">
               <div>
-                <h2>Combinações de anéis</h2>
-                <p>As regras da medida-alvo ainda precisam ser confirmadas.</p>
+                <h2>Combinações de anéis — largura solicitada</h2>
+                <p>Combinações que atingem exatamente a largura que será cortada.</p>
               </div>
             </div>
             <div class="option-list" id="opcoesAneis"></div>
             <div class="field">
-              <label for="aneisEscolhidos">Anéis que serão utilizados</label>
-              <textarea id="aneisEscolhidos" rows="3" placeholder="Informe os anéis utilizados ou escreva Nenhum"></textarea>
+              <label for="aneisEscolhidos">Anéis que serão utilizados na largura solicitada</label>
+              <textarea id="aneisEscolhidos" rows="3" placeholder="Selecione uma combinação ou informe os anéis utilizados"></textarea>
             </div>
           </section>
 
@@ -258,8 +274,14 @@
             <div class="section-heading">
               <div>
                 <h2>Combinações de impulsores</h2>
-                <p>Seleção automática entre as reduções testadas.</p>
+                <p>Seleção entre as reduções de 0,10 cm, 0,15 cm e 0,20 cm.</p>
               </div>
+            </div>
+            <div class="filter-chips" id="filtrosImpulsores" aria-label="Filtrar redução dos impulsores">
+              <button class="chip selected" type="button" data-reducao="TODAS">Todas</button>
+              <button class="chip" type="button" data-reducao="0.10">0,10</button>
+              <button class="chip" type="button" data-reducao="0.15">0,15</button>
+              <button class="chip" type="button" data-reducao="0.20">0,20</button>
             </div>
             <div class="option-list" id="opcoesImpulsores"></div>
 
@@ -275,6 +297,28 @@
           </section>
         </div>
 
+        <!-- COMBINAÇÃO SEPARADA PARA O CANTO INFERIOR -->
+        <section class="panel">
+          <div class="section-heading">
+            <div>
+              <h2>Combinação de anéis — canto de baixo</h2>
+              <p>Busca separada para atingir a medida calculada do canto inferior.</p>
+            </div>
+          </div>
+          <div class="option-list" id="opcoesAneisCantoInferior"></div>
+          <div class="field">
+            <label for="aneisCantoInferiorEscolhidos">Anéis utilizados no canto de baixo</label>
+            <textarea id="aneisCantoInferiorEscolhidos" rows="3" placeholder="Selecione a combinação correspondente ao canto inferior"></textarea>
+          </div>
+        </section>
+
+        <section class="panel print-only" id="fichaEscolhas">
+          <h2>Ferramentais selecionados</h2>
+          <p><strong>Anéis — largura:</strong> <span id="fichaAneis"></span></p>
+          <p><strong>Anéis — canto inferior:</strong> <span id="fichaInferior"></span></p>
+          <p><strong>Impulsores:</strong> <span id="fichaImpulsores"></span></p>
+        </section>
+
         <section class="panel">
           <div class="field">
             <label for="observacaoResultado">Observações da escolha</label>
@@ -283,7 +327,8 @@
 
           <div class="button-row">
             <button class="btn btn-secondary" id="voltarEdicao" type="button">← Voltar à edição</button>
-            <button class="btn btn-primary" id="confirmarMontagem" type="button">Confirmar e salvar montagem</button>
+            <button class="btn btn-secondary" id="imprimirFicha" type="button">Imprimir ficha</button>
+              <button class="btn btn-primary" id="confirmarMontagem" type="button">Confirmar e salvar montagem</button>
           </div>
           <p class="message" id="mensagemResultado" role="alert"></p>
         </section>
@@ -348,6 +393,18 @@
                 <input id="nomeFerramental" placeholder="Código ou nome da peça">
               </div>
 
+              <div class="field">
+                <label>Quantidade para cadastrar</label>
+                <div class="quantity-control" aria-label="Quantidade de peças">
+                  <button id="diminuirQuantidade" type="button" aria-label="Diminuir quantidade">−</button>
+                  <output id="quantidadeFerramental" aria-live="polite">1</output>
+                  <button id="aumentarQuantidade" type="button" aria-label="Aumentar quantidade">+</button>
+                </div>
+              </div>
+              <label class="radio-label preference-choice">
+                <input type="checkbox" id="ultimoCasoFerramental">
+                Utilizar apenas em último caso
+              </label>
               <button class="btn btn-primary full" type="submit">Cadastrar ferramental</button>
               <p class="message" id="mensagemFerramental" role="status"></p>
             </form>
@@ -357,7 +414,7 @@
             <div class="section-heading">
               <div>
                 <h2>Ferramentais cadastrados</h2>
-                <p>Pesquise por categoria, medida ou identificação.</p>
+                <p>Consulte as medidas, quantidades e prioridades; ajuste com + e −.</p>
               </div>
             </div>
 
@@ -392,10 +449,12 @@
         <section class="panel">
           <h2>1. Preenchimento</h2>
           <ul class="manual-list">
-            <li>Informe o cliente ou a etapa, a largura, a espessura e o cabeçote.</li>
-            <li>Informe a primeira faca. A segunda faca é opcional quando selecionadas duas facas.</li>
-            <li>Informe a medida do anel que será utilizado para calcular o canto.</li>
-            <li>Confira a prévia dos resultados antes de salvar a montagem.</li>
+            <li>Informe o cliente ou a etapa, a largura solicitada, a espessura e o cabeçote.</li>
+            <li>Informe a largura do rolo recebido para calcular as tiras completas e a sobra.</li>
+            <li>Quando houver larguras diferentes na mesma montagem, preencha as larguras e quantidades nas linhas opcionais.</li>
+            <li>Informe a primeira faca. A segunda faca é utilizada quando forem selecionadas duas facas.</li>
+            <li>Informe a medida do anel utilizado para calcular os cantos.</li>
+            <li>Confira os resultados e as combinações antes de salvar.</li>
           </ul>
 
           <hr>
@@ -419,29 +478,48 @@
 
           <hr>
 
-          <h2>3. Cálculo do canto</h2>
-          <p>O canto é calculado com base na medida do anel escolhido, somada à metade da folga.</p>
-          <p><strong>Regra:</strong> canto = medida do anel + (folga ÷ 2).</p>
-          <p><strong>Exceção:</strong> se a folga for 0,05 cm, acrescentar mais 0,05 cm ao resultado.</p>
-          <p>Exemplo: anel de 10,00 cm e folga de 0,05 cm resultam em canto de 10,075 cm.</p>
+          <h2>3. Canto de cima e canto de baixo</h2>
+          <p><strong>Canto de cima:</strong> medida do anel + metade da folga.</p>
+          <p><strong>Fórmula:</strong> canto de cima = anel + (folga ÷ 2). Se a folga for 0,05 cm, acrescentar mais 0,05 cm ao resultado.</p>
+          <p><strong>Canto de baixo:</strong> canto de cima − metade da folga − (2 × medida da primeira faca).</p>
+          <p>Exemplo: anel de 52,00 cm, folga de 0,15 cm e primeira faca de 3,90 cm.</p>
+          <ul class="manual-list">
+            <li>Canto de cima = 52,00 + 0,075 = 52,075 cm.</li>
+            <li>Canto de baixo = 52,075 − 0,075 − (2 × 3,90) = 44,20 cm.</li>
+          </ul>
+          <p>Para cabeçote grande com folga de 0,05 cm, exibir o aviso: <strong>“Papel roxo junto no canto”.</strong></p>
 
           <hr>
 
           <h2>4. Contra-corte</h2>
-          <p>Contra-corte = largura − (2 × medida da faca) − folga. O cálculo só é feito quando a primeira faca é informada como valor numérico.</p>
+          <p><strong>CC1:</strong> largura solicitada − (2 × medida da primeira faca) − folga.</p>
+          <p><strong>CC2:</strong> largura solicitada − (2 × medida da segunda faca) − folga. Só é calculado quando duas facas estão selecionadas e a segunda medida é numérica.</p>
 
           <hr>
 
-          <h2>5. Impulsores e anéis</h2>
+          <h2>5. Tiras e capacidade do cabeçote</h2>
           <ul class="manual-list">
-            <li>O sistema testa as reduções de 0,10 cm, 0,15 cm e 0,20 cm para os impulsores.</li>
-            <li>As combinações de impulsores priorizam menos medidas diferentes, menos peças e, em caso de empate, a menor redução.</li>
-            <li>A medida-alvo para a combinação dos anéis ainda precisa ser confirmada antes de automatizar essa seleção.</li>
+            <li>Tiras completas = parte inteira da divisão da largura do rolo pela largura solicitada.</li>
+            <li>Sobra do rolo = largura do rolo − (quantidade de tiras completas × largura solicitada).</li>
+            <li>Capacidade do cabeçote pequeno: 270 cm.</li>
+            <li>Capacidade do cabeçote grande: 570 cm.</li>
+            <li>Em montagens com larguras diferentes, somar cada largura multiplicada pela sua quantidade e subtrair o total da capacidade do cabeçote.</li>
           </ul>
 
           <hr>
 
-          <h2>6. Armazenamento</h2>
+          <h2>6. Impulsores e combinações de anéis</h2>
+          <ul class="manual-list">
+            <li>O sistema testa as reduções de 0,10 cm, 0,15 cm e 0,20 cm para os impulsores.</li>
+            <li>As combinações priorizam menos peças; depois menos medidas diferentes e, para os impulsores, menor redução.</li>
+            <li>A combinação principal de anéis deve atingir exatamente a largura solicitada para o corte.</li>
+            <li>A combinação de anéis para o canto de baixo é calculada separadamente, usando a medida do canto inferior.</li>
+            <li>Se não houver combinação exata entre os ferramentais disponíveis, o sistema deve informar que nenhuma combinação exata foi encontrada.</li>
+          </ul>
+
+          <hr>
+
+          <h2>7. Armazenamento</h2>
           <p>O histórico e os ferramentais são guardados no armazenamento local do navegador. Exporte backups regularmente para evitar perda dos dados.</p>
         </section>
       </section>
@@ -462,8 +540,12 @@
 
         <section class="panel">
           <h2>Backup dos dados</h2>
-          <p class="muted">Exporte o histórico de montagens, os ferramentais cadastrados e a preferência de tema em um arquivo JSON.</p>
-          <button class="btn btn-primary" id="exportarDados" type="button">Exportar backup JSON</button>
+          <p class="muted">Exporte ou restaure os ferramentais e o histórico salvos neste navegador.</p>
+          <div class="button-row">
+            <button class="btn btn-primary" id="exportarDados" type="button">Exportar backup JSON</button>
+            <label class="btn btn-secondary import-label" for="importarArquivo">Restaurar backup JSON</label>
+            <input id="importarArquivo" type="file" accept=".json,application/json" hidden>
+          </div>
           <p class="message" id="mensagemConfiguracoes" role="status"></p>
         </section>
       </section>
