@@ -62,7 +62,6 @@ const normalizarPeca = p => ({
 
 let montagemAtual = null;
 let categoriaAtual = 'ANEL';
-let quantidadeCadastro = 1;
 let numeroLinhasTiras = 0;
 let excluidosTemporarios = new Map(); // indisponibilidade apenas nesta consulta
 let opcoesTopo = [], opcoesInferior = [], opcoesImpulsores = [];
@@ -225,9 +224,6 @@ function lerTiras() {
 }
 
 /* CADASTRO E ESTOQUE */
-function atualizarQtdCadastro() { $('quantidadeFerramental').textContent = String(quantidadeCadastro); }
-$('diminuirQuantidade')?.addEventListener('click', () => { quantidadeCadastro = Math.max(1, quantidadeCadastro - 1); atualizarQtdCadastro(); });
-$('aumentarQuantidade')?.addEventListener('click', () => { quantidadeCadastro = Math.min(999, quantidadeCadastro + 1); atualizarQtdCadastro(); });
 document.querySelectorAll('[data-category]').forEach(b => b.addEventListener('click', () => {
   categoriaAtual = b.dataset.category;
   document.querySelectorAll('[data-category]').forEach(el => el.classList.toggle('selected', el === b));
@@ -246,18 +242,20 @@ $('formFerramental')?.addEventListener('submit', evento => {
   evento.preventDefault();
   const medida = numero($('medidaFerramental').value);
   if (!Number.isFinite(medida) || medida <= 0) { $('mensagemFerramental').textContent = 'Digite uma medida maior que zero.'; return; }
-  const pecas = lerLista(CHAVES.pecas);
-  for (let i=0; i<quantidadeCadastro; i++) {
-    const identificacao = proximaIdentificacao(categoriaAtual,pecas);
-    pecas.push({ id:novoId(), categoria:categoriaAtual, medida:arred(medida), identificacao,
-      ultimoCaso:$('ultimoCasoFerramental').checked, indisponivel:false, criadoEm:new Date().toISOString() });
+  // Cada categoria e medida aparece apenas uma vez, sem controle de quantidade.
+  // Cadastros antigos com a mesma medida permanecem preservados até exclusão explícita.
+  if (obterPecas(categoriaAtual).some(p => inteiro(p.medida) === inteiro(arred(medida)))) {
+    $('mensagemFerramental').textContent = 'Essa medida já está cadastrada nesta categoria.';
+    return;
   }
-  const cadastrados = quantidadeCadastro;
-  quantidadeCadastro = 1;
-  atualizarQtdCadastro();
+  const pecas = lerLista(CHAVES.pecas);
+  pecas.push({ id:novoId(), categoria:categoriaAtual, medida:arred(medida),
+    identificacao:proximaIdentificacao(categoriaAtual,pecas),
+    ultimoCaso:$('ultimoCasoFerramental').checked, indisponivel:false,
+    criadoEm:new Date().toISOString() });
   $('formFerramental').reset();
   salvarPecas(pecas);
-  $('mensagemFerramental').textContent = `${cadastrados} peça(s) cadastrada(s) com sucesso.`;
+  $('mensagemFerramental').textContent = 'Ferramental cadastrado com sucesso.';
 });
 $('filtroCategoria')?.addEventListener('change', atualizarFerramentais);
 $('buscaFerramental')?.addEventListener('input', atualizarFerramentais);
@@ -274,30 +272,29 @@ function atualizarFerramentais() {
   if (!grupos.length) { area.innerHTML = '<p class="empty">Nenhum ferramental encontrado.</p>'; return; }
   area.innerHTML = grupos.map(([k,ps]) => {
     const p = ps[0], ultimo = ps.every(x => x.ultimoCaso);
-    const indisponiveis = ps.filter(x => x.indisponivel).length;
+    const temIndisponivel = ps.some(x => x.indisponivel);
     return `<article class="record-item tool-group">
       <div class="tool-top"><div><strong>${nomeCategoria(p.categoria)} · ${formatar(p.medida)} cm</strong>
-      ${indisponiveis ? `<div class="record-meta">${indisponiveis} em uso ou indisponível(is)</div>` : ''}</div>
-      <div class="quantity-control"><button data-menos="${escapar(k)}" type="button" aria-label="Remover uma peça">−</button>
-      <output>${ps.length}</output><button data-mais="${escapar(k)}" type="button" aria-label="Adicionar uma peça">+</button></div></div>
+      ${temIndisponivel ? '<div class="record-meta">Em uso ou indisponível</div>' : ''}</div>
+      <button class="small-btn danger" type="button" data-excluir-ferramental="${escapar(k)}"
+        aria-label="Excluir ${escapar(nomeCategoria(p.categoria))} ${formatar(p.medida)} cm">Excluir</button></div>
       <label class="radio-label preference-choice"><input type="checkbox" data-preferencia="${escapar(k)}" ${ultimo?'checked':''}>
       Usar apenas em último caso</label>
     </article>`;
   }).join('');
-  area.querySelectorAll('[data-mais]').forEach(b => b.addEventListener('click', () => {
-    const [cat,med] = b.dataset.mais.split('|');
-    const pecas = lerLista(CHAVES.pecas);
-    const presentes = pecas.map(normalizarPeca).filter(p => chaveGrupo(p) === b.dataset.mais);
-    pecas.push({ id:novoId(),categoria:cat,medida:Number(med)/10000,identificacao:proximaIdentificacao(cat,pecas),
-      ultimoCaso:presentes.every(p=>p.ultimoCaso), indisponivel:false,criadoEm:new Date().toISOString() });
-    salvarPecas(pecas);
-  }));
-  area.querySelectorAll('[data-menos]').forEach(b => b.addEventListener('click', () => {
-    const pecas = lerLista(CHAVES.pecas);
-    const mesmos = pecas.map(normalizarPeca).filter(p => chaveGrupo(p) === b.dataset.menos);
-    const remover = mesmos.find(p=>!p.indisponivel) || mesmos[mesmos.length-1];
-    if (!remover) return;
-    salvarPecas(pecas.filter(p => String(p.id) !== String(remover.id)));
+  // O botão Excluir remove apenas a categoria e a medida escolhidas, com confirmação.
+  // Um cadastro antigo pode conter várias cópias da mesma medida; todas pertencem
+  // ao mesmo item visível e só serão removidas após a confirmação.
+  area.querySelectorAll('[data-excluir-ferramental]').forEach(botao => botao.addEventListener('click', () => {
+    const chave = botao.dataset.excluirFerramental;
+    const grupo = gruposPecas('TODOS').find(([k]) => k === chave)?.[1];
+    if (!grupo?.length) return;
+    const p = grupo[0];
+    const descricao = `${nomeCategoria(p.categoria)} · ${formatar(p.medida)} cm`;
+    if (!window.confirm(`Excluir ${descricao} do cadastro?\n\nEssa ação remove esta medida das sugestões futuras, mas mantém o histórico de montagens já salvas.`)) return;
+    excluidosTemporarios.delete(chave);
+    salvarPecas(lerLista(CHAVES.pecas).filter(item => chaveGrupo(normalizarPeca(item)) !== chave));
+    $('mensagemFerramental').textContent = `${descricao} excluído do cadastro.`;
   }));
   area.querySelectorAll('[data-preferencia]').forEach(input => input.addEventListener('change', () => {
     const pecas = lerLista(CHAVES.pecas);
@@ -585,7 +582,7 @@ function mostrarResumo() {
   const campos=[
     ['Cliente',m.cliente],['Largura solicitada',m.larguraInformada===null?'Não informada (calculada pelas tiras)':formatar(m.largura)+' cm'],
     ['Largura do rolo recebido',m.larguraRolo===null?'Não informada':formatar(m.larguraRolo)+' cm'],
-    ['Total de tiras',m.larguraRolo===null?'Não informado':String(Math.floor((m.larguraRolo*10000+0.0001)/(m.largura*10000)))],
+    ['Total de tiras',m.largurasTiras.length ? String(m.totalTiras) : (m.larguraRolo===null?'Não informado':String(Math.floor((m.larguraRolo*10000+0.0001)/(m.largura*10000))))],
     ['Tipo de etapa',m.tipoEtapa],['Espessura',formatar(m.espessura)+' cm'],
     ['Folga utilizada',formatar(m.folga)+' cm'],['Cabeçote',m.cabecote],
     ['Faca(s) utilizadas',facaTexto],['Canto superior',formatar(m.cantoSuperior)+' cm'],
@@ -773,47 +770,7 @@ function iniciarSistema() {
     $('avisoArmazenamento').hidden = false;
   }
   aplicarTema(); atualizarFolga(); atualizarCampoSegundaFaca(); iniciarTiras();
-  atualizarQtdCadastro(); atualizarListaFacas(); atualizarFerramentais(); atualizarDisponibilidade();
+  atualizarListaFacas(); atualizarFerramentais(); atualizarDisponibilidade();
   atualizarHistorico(); atualizarUltimasMontagens();
 }
 iniciarSistema();
-
-/* ARMCO LC25 — Correção do total de tiras no resumo */
-
-function corrigirTotalTirasResumo() {
-  if (!montagemAtual) return;
-
-  const tiras = montagemAtual.largurasTiras;
-
-  if (!Array.isArray(tiras) || tiras.length === 0) return;
-
-  const total = tiras.reduce(
-    (soma, tira) => soma + Number(tira.quantidade || 0),
-    0
-  );
-
-  montagemAtual.totalTiras = total;
-
-  const campos = document.querySelectorAll(
-    "#resultadoResumo .summary-cell"
-  );
-
-  campos.forEach(campo => {
-    const titulo = campo.querySelector("small");
-    const valor = campo.querySelector("strong");
-
-    if (
-      titulo &&
-      valor &&
-      titulo.textContent.trim() === "Total de tiras"
-    ) {
-      valor.textContent = String(total);
-    }
-  });
-}
-
-document
-  .getElementById("formMontagem")
-  ?.addEventListener("submit", () => {
-    setTimeout(corrigirTotalTirasResumo, 0);
-  });
