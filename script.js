@@ -644,7 +644,6 @@ function atualizarCalculos() {
 
 /* RESULTADOS, HISTÓRICO E REUTILIZAÇÃO */
 $('voltarEdicao')?.addEventListener('click',()=>abrirPagina('inicio'));
-$('imprimirFicha')?.addEventListener('click',()=>window.print());
 $('confirmarMontagem')?.addEventListener('click',()=>{
   if(!montagemAtual) { $('mensagemResultado').textContent='Nenhuma montagem para salvar.';return; }
   const registro={...montagemAtual,
